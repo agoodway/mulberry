@@ -26,7 +26,18 @@ defmodule Mulberry.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ex_doc, "~> 0.14", only: :dev, runtime: false}
+      {:floki, "~> 0.36.0"},
+      {:req, "~> 0.5.0"},
+      {:ex_doc, "~> 0.14", only: :dev, runtime: false},
+      {:langchain, "0.3.0-rc.0"},
+      {:html2markdown, github: "agoodway/html2markdown", branch: "main"},
+      {:flamel, github: "themusicman/flamel", branch: "main"},
+      {:text_chunker, "~> 0.3.0"},
+      {:tokenizers, "~> 0.3.0"},
+      {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
+      {:rambo, "~> 0.3"},
+      {:mime, "~> 2.0"},
+      {:tesseract_ocr, github: "agoodway/tesseract-ocr-elixir", branch: "master"}
     ]
   end
 

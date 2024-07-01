@@ -1,18 +1,15 @@
 defmodule Mulberry do
-  @moduledoc """
-  Documentation for `Mulberry`.
-  """
+  @moduledoc false
 
-  @doc """
-  Hello world.
+  @spec config(atom()) :: any()
+  def config(key) do
+    Application.get_env(:mulberry, key)
+  end
 
-  ## Examples
-
-      iex> Mulberry.hello()
-      :world
-
-  """
-  def hello do
-    :world
+  @spec search(module(), String.t(), pos_integer()) :: [any()]
+  def search(module, query, limit \\ 3) do
+    query
+    |> module.search(limit)
+    |> module.to_documents()
   end
 end
