@@ -154,8 +154,16 @@ defmodule Mulberry.Document.File do
     end
 
     defp ocr_pdf(file) do
-      case Rambo.run("pdftotext", ["-layout", file.path, "-"]) do
-        {:ok, %Rambo{status: 0, out: contents}} ->
+      # case Rambo.run("pdftotext", ["-layout", file.path, "-"]) do
+      #   {:ok, %Rambo{status: 0, out: contents}} ->
+      #     file = Map.replace(file, :contents, contents)
+      #     {:ok, file}
+      #
+      #   _ ->
+      #     {:error, :parse_failed, file}
+      # end
+      case System.cmd("pdftotext", ["-layout", file.path, "-"]) do
+        {contents, 0} ->
           file = Map.replace(file, :contents, contents)
           {:ok, file}
 
