@@ -1,4 +1,6 @@
 defmodule Mulberry.Retriever.ScrapingBee do
+  require Logger
+
   def get(url, _opts \\ []) do
     api_key = Mulberry.config(:scraping_bee_api_key)
     url =
@@ -8,7 +10,8 @@ defmodule Mulberry.Retriever.ScrapingBee do
       {:ok, %Req.Response{status: 200, body: body}} ->
         {:ok, %Mulberry.Retriever.Response{status: :ok, content: body}}
 
-      _ ->
+      error ->
+        Logger.error("#{__MODULE__}.get/2 error=#{inspect(error)}")
         {:error, :failed}
     end
   end
