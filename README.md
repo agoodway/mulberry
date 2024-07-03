@@ -92,6 +92,7 @@ The above example uses [Flamel](https://github.com/themusicman/flamel) chain a c
 - [ ] Text to audio
 - [ ] Audio to text
 - [ ] Video to text
+- [ ] Add embeddings to Text module
 - [ ] Typesense Search Adapter
 - [ ] Streaming audio and video support
 - [ ] Agents
