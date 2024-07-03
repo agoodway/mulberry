@@ -27,6 +27,7 @@ defmodule Mulberry.Document.WebPage do
   end
 
   defimpl Mulberry.Document do
+    require Logger
     alias Mulberry.Document
     alias Mulberry.Retriever
     alias Mulberry.Retriever.Response
@@ -37,6 +38,7 @@ defmodule Mulberry.Document.WebPage do
 
       case Retriever.get(retriever, web_page.url) do
         {:ok, %Response{status: :ok, content: content}} ->
+          Logger.debug("#{__MODULE__}.load/2 content=#{inspect(content)}")
           web_page = Map.replace(web_page, :content, content)
 
           web_page =

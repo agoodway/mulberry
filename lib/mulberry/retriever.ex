@@ -5,7 +5,10 @@ defmodule Mulberry.Retriever do
               {:ok, map()} | {:error, atom()}
 
   def get(module, url, opts \\ []) do
-    Logger.debug("#{__MODULE__}.get/2 module=#{inspect(module)} url=#{inspect(url)} opts=#{inspect(opts)}")
+    Logger.debug(
+      "#{__MODULE__}.get/2 module=#{inspect(module)} url=#{inspect(url)} opts=#{inspect(opts)}"
+    )
+
     module.get(url, opts)
   end
 end
