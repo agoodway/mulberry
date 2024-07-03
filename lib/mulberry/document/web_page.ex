@@ -28,11 +28,15 @@ defmodule Mulberry.Document.WebPage do
 
   defimpl Mulberry.Document do
     alias Mulberry.Document
+    alias Mulberry.Retriever
+    alias Mulberry.Retriever.Response
     alias Mulberry.Text
 
-    def load(%WebPage{} = web_page, _opts \\ []) do
-      case Req.get(web_page.url) do
-        {:ok, %Req.Response{status: 200, body: content}} ->
+    def load(%WebPage{} = web_page, opts \\ []) do
+      retriever = Keyword.get(opts, :retriever, Retriever.Req)
+
+      case Retriever.get(retriever, web_page.url) do
+        {:ok, %Response{status: :ok, content: content}} ->
           web_page = Map.replace(web_page, :content, content)
 
           web_page =

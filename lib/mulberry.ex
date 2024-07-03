@@ -18,14 +18,14 @@ defmodule Mulberry do
     |> module.to_documents()
   end
 
-  def summarize(uri) do
+  def summarize(uri, opts \\ []) do
     if String.starts_with?(uri, "http") do
       WebPage.new(%{url: uri})
     else
       File.new(%{path: uri})
     end
     |> Chain.new()
-    |> Chain.apply(&Document.load/1)
+    |> Chain.apply(&Document.load(&1, opts))
     |> Chain.apply(&Document.generate_summary/1)
     |> Chain.to_value()
     |> Document.to_text()

@@ -11,19 +11,19 @@ defmodule Mulberry.Search.Brave do
   @brave_search_url "https://api.search.brave.com/res/v1/web/search"
 
   @impl true
-  def search(query, count \\ 20, result_filter \\ "query, web") do
-    params = %{q: query, result_filter: result_filter, count: count}
+  def search(query, count \\ 20, result_filter \\ "query, web", opts \\ []) do
+    retriever = Keyword.get(opts, :retriever, Mulberry.Retriever.Req)
 
-    case get(@brave_search_url, params) do
-      {:ok, %Req.Response{status: 200, body: body}} ->
-        body
+    request_opts = [
+      params: %{q: query, result_filter: result_filter, count: count},
+      headers: [
+        {"Accept", "application/json"},
+        {"Accept-Encoding", "gzip"},
+        {"X-Subscription-Token", Mulberry.config(:brave_api_key)}
+      ]
+    ]
 
-      {:ok, %Req.Response{} = response} ->
-        {:error, response}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
+    Mulberry.Retriever.get(retriever, @brave_search_url, request_opts)
   end
 
   @impl true
@@ -41,17 +41,5 @@ defmodule Mulberry.Search.Brave do
         Logger.error("#{__MODULE__}.to_web_pages/1 respone=#{inspect(response)}")
         {:error, :parse_search_results_failed}
     end
-  end
-
-  defp get(url, params) do
-    Req.get(url, headers: headers(), params: params)
-  end
-
-  defp headers do
-    [
-      {"Accept", "application/json"},
-      {"Accept-Encoding", "gzip"},
-      {"X-Subscription-Token", Mulberry.config(:brave_api_key)}
-    ]
   end
 end
