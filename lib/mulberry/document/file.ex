@@ -1,6 +1,8 @@
 defmodule Mulberry.Document.File do
   @moduledoc false
 
+  require Logger
+
   @type t :: %__MODULE__{
           path: String.t() | Path.t(),
           contents: any(),
@@ -167,7 +169,8 @@ defmodule Mulberry.Document.File do
           file = Map.replace(file, :contents, contents)
           {:ok, file}
 
-        _ ->
+        error ->
+          Logger.error("#{__MODULE__}.ocr_pdf/1 error=#{inspect(error)}")
           {:error, :parse_failed, file}
       end
     end
