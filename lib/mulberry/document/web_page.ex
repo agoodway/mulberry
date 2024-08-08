@@ -42,7 +42,7 @@ defmodule Mulberry.Document.WebPage do
           web_page = Map.replace(web_page, :content, content)
 
           web_page =
-            case Html2Markdown.convert(content) do
+            case Mulberry.HTML.to_markdown(content) do
               {:error, _error} ->
                 web_page
 
