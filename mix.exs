@@ -37,7 +37,8 @@ defmodule Mulberry.MixProject do
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
       {:rambo, "~> 0.3"},
       {:mime, "~> 2.0"},
-      {:tesseract_ocr, github: "agoodway/tesseract-ocr-elixir", branch: "master"}
+      {:tesseract_ocr, github: "agoodway/tesseract-ocr-elixir", branch: "master"},
+      {:playwright, "~> 1.44.0-alpha.3"}
     ]
   end
 
