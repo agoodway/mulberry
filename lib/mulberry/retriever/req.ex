@@ -1,4 +1,5 @@
 defmodule Mulberry.Retriever.Req do
+  require Logger
   @behaviour Mulberry.Retriever
 
   @impl true
@@ -13,7 +14,8 @@ defmodule Mulberry.Retriever.Req do
       {:ok, %Req.Response{status: status, body: body}} when status < 400 ->
         %Mulberry.Retriever.Response{status: :ok, content: body}
 
-      _ ->
+      error ->
+        Logger.error("Mulberry - Failed to get #{url}: #{inspect(error)}")
         %Mulberry.Retriever.Response{status: :failed, content: nil}
     end
     |> responder.()
