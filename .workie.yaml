@@ -1,0 +1,168 @@
+# Workie Configuration File
+# =========================
+# This file defines how Workie manages your development worktrees.
+# Uncomment and customize the settings below for your project.
+
+# Core Configuration - Files to Copy to New Worktrees
+# ====================================================
+# files_to_copy:
+# Environment files (commonly needed in all worktrees)
+# - .env.dev.example
+# - .env.test.example
+# - .env.local.example
+
+# Configuration files
+# - config/development.yaml
+# - config/testing.yaml
+# - config/staging.yaml
+# - .editorconfig
+# - .gitignore
+
+# Documentation
+# - README.md
+# - docs/setup.md
+# - docs/development.md
+# - CONTRIBUTING.md
+
+# Scripts and tools (use trailing slash for directories)
+# - scripts/
+# - tools/
+# - bin/
+
+# Language-specific files
+# Node.js/JavaScript
+# - package.json
+# - package-lock.json
+# - yarn.lock
+# - .eslintrc.js
+# - .prettierrc
+# - tsconfig.json
+# - jest.config.js
+
+# Python
+# - requirements.txt
+# - requirements-dev.txt
+# - pyproject.toml
+# - setup.py
+# - tox.ini
+# - .flake8
+
+# Go
+# - go.mod
+# - go.sum
+# - Makefile
+
+# Ruby
+# - Gemfile
+# - Gemfile.lock
+# - .ruby-version
+
+# Docker files
+# - Dockerfile
+# - Dockerfile.dev
+# - docker-compose.yml
+# - docker-compose.dev.yml
+# - docker-compose.test.yml
+# - .dockerignore
+
+# CI/CD files
+# - .github/
+# - .gitlab-ci.yml
+# - .travis.yml
+# - circle.yml
+
+# IDE/Editor settings (uncomment if your team uses these)
+# - .vscode/
+# - .idea/
+# - .sublime-project
+
+# Post-creation hooks (uncomment and customize as needed)
+hooks:
+  post_create:
+    - "echo 'Setting up new worktree...'"
+    - "mix deps.get"
+    - "claude"
+#   pre_remove:
+#     - "echo 'Cleaning up worktree...'"
+#     - "npm run cleanup"
+
+# Future Configuration Options (Coming Soon)
+# ==========================================
+# These features are planned for future releases.
+# You can add them to your config file now, but they won't be used yet.
+
+# Branch-specific configuration
+# branches:
+#   feature/*:
+#     files_to_copy:
+#       - .env.dev.example
+#       - config/development.yaml
+#   hotfix/*:
+#     files_to_copy:
+#       - .env.production.example
+#       - config/production.yaml
+
+# Environment-specific settings
+# environments:
+#   development:
+#     auto_install_deps: true
+#     run_tests: false
+#   staging:
+#     auto_install_deps: true
+#     run_tests: true
+#   production:
+#     auto_install_deps: false
+#     run_tests: true
+
+# Service management
+# services:
+#   database:
+#     type: "postgresql"
+#     version: "15"
+#     auto_start: true
+#   redis:
+#     type: "redis"
+#     version: "7"
+#     auto_start: false
+
+# AI-powered features
+# ai:
+#   enabled: false
+#   auto_suggest_files: true
+#   learn_patterns: true
+#   optimize_workflow: false
+
+# Team collaboration
+# team:
+#   shared_config_url: ""
+#   auto_sync: false
+#   notifications:
+#     slack_webhook: ""
+#     teams_webhook: ""
+
+# Tips for Customizing Your Configuration:
+# ========================================
+# 1. Start simple - uncomment just the files you need most
+# 2. Use relative paths from your repository root
+# 3. For directories, include the trailing slash (/)
+# 4. Test your configuration with a temporary branch first
+# 5. Add comments to explain project-specific choices
+# 6. Consider different needs for different branch types
+# 7. Keep the file under version control so your team can share it
+
+# Common Patterns:
+# ===============
+# - Always copy environment examples and config files
+# - Include package manager files for dependency installation
+# - Copy scripts and tools that help with development
+# - Include documentation that developers need to reference
+# - Add IDE settings if your team standardizes on specific tools
+# - Be selective with CI/CD files to avoid conflicts
+
+# Troubleshooting:
+# ===============
+# - If a file doesn't exist, Workie will show a warning but continue
+# - Use 'workie --verbose' to see detailed copy operations
+# - Check file permissions if copies fail
+# - Use 'workie --list' to see all your worktrees
+# - Use 'workie remove <branch>' to clean up test worktrees
