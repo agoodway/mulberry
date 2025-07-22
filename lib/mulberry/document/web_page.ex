@@ -144,13 +144,8 @@ defmodule Mulberry.Document.WebPage do
 
     def to_chunks(%WebPage{markdown: markdown} = web_page, _opts)
         when is_binary(markdown) do
-      case Text.split(web_page.markdown) do
-        {:ok, chunks} ->
-          {:ok, chunks}
-
-        {:error, error} ->
-          {:error, error}
-      end
+      chunks = Text.split(web_page.markdown)
+      {:ok, chunks}
     end
 
     def to_chunks(%WebPage{} = _web_page, _opts) do

@@ -26,14 +26,104 @@ end
 
 ## Configuration
 
-In your `runtime.exs`:
+### Basic Configuration
+
+Mulberry now includes a flexible LangChain configuration system that supports multiple LLM providers with sensible defaults. The simplest configuration uses environment variables:
+
+```bash
+# Choose your provider (defaults to :openai)
+export MULBERRY_LLM_PROVIDER=openai
+
+# Set API keys for the providers you want to use
+export OPENAI_API_KEY=your-openai-key
+export ANTHROPIC_API_KEY=your-anthropic-key
+
+# For Brave search functionality
+export BRAVE_API_KEY=your-brave-key
+```
+
+### Advanced Configuration
+
+You can configure LangChain providers programmatically in your `runtime.exs`:
 
 ```elixir
+# Legacy configuration (still supported)
 config :langchain, openai_key: System.get_env("OPENAI_API_KEY")
 config :mulberry, brave_api_key: System.get_env("BRAVE_API_KEY")
+
+# New configuration system (optional - defaults are provided)
+config :mulberry, :langchain,
+  default_provider: :openai,
+  providers: [
+    openai: [
+      model: "gpt-4",
+      temperature: 0.7
+    ],
+    anthropic: [
+      model: "claude-3-opus-20240229",
+      temperature: 0.5
+    ]
+  ]
+```
+
+### Supported LLM Providers
+
+- `:openai` - OpenAI's GPT models (default)
+- `:anthropic` - Anthropic's Claude models
+- `:google` - Google's Gemini models
+- `:mistral` - Mistral AI models
+- `:ollama` - Local Ollama models
+- `:vertex_ai` - Google Vertex AI
+- `:bumblebee` - Local Bumblebee models
+
+### Environment Variables
+
+Each provider supports configuration through environment variables:
+
+- `MULBERRY_LLM_PROVIDER` - Default provider to use
+- `MULBERRY_[PROVIDER]_API_KEY` - API key for specific provider
+- `MULBERRY_[PROVIDER]_MODEL` - Default model for provider
+- `MULBERRY_[PROVIDER]_TEMPERATURE` - Temperature setting
+- `MULBERRY_[PROVIDER]_MAX_TOKENS` - Max tokens setting
+- `MULBERRY_[PROVIDER]_ENDPOINT` - Custom endpoint URL
+
+Examples:
+```bash
+export MULBERRY_OPENAI_MODEL=gpt-4
+export MULBERRY_ANTHROPIC_MODEL=claude-3-opus-20240229
+export MULBERRY_OLLAMA_ENDPOINT=http://localhost:11434/api/chat
 ```
 
 ## Examples
+
+### Using Different LLM Providers
+
+```elixir
+# Use default provider (OpenAI by default)
+{:ok, summary} = Mulberry.Text.summarize("Long text to summarize...")
+
+# Use Anthropic's Claude
+{:ok, summary} = Mulberry.Text.summarize("Long text...", provider: :anthropic)
+
+# Use Google's Gemini with custom temperature
+{:ok, summary} = Mulberry.Text.summarize("Long text...", 
+  provider: :google, 
+  temperature: 0.2
+)
+
+# Generate title with Mistral AI
+{:ok, title} = Mulberry.Text.title("Article content...", 
+  provider: :mistral,
+  model: "mistral-large"
+)
+
+# Use local Ollama installation
+{:ok, summary} = Mulberry.Text.summarize("Long text...", 
+  provider: :ollama,
+  model: "llama2",
+  endpoint: "http://localhost:11434/api/chat"
+)
+```
 
 ### Extract text from a PDF or image file in a Phoenix upload:
 

@@ -83,5 +83,15 @@ you can use your best judgement as to whether a test is needed or not.
 - When adding tests make sure to make them async if you can.
 - Please make sure to fill in the `@moduledoc` attribute for modules.
 - Please make sure to add @spec for every function
-- Use Faker when generating test data
+- Use Faker when generating test data and seed data
 - Use ExUnit.CaptureLog if there are any errors getting logged in tests
+
+YOU MUST use conventional commits when writing commit messages
+<type>[scope]: <description>\n\n[body]\n\n[footer(s)]
+Type: feat(MINOR), fix(PATCH), or build/chore/ci/docs/style/refactor/perf/test. Req. Scope: Opt, (noun). Desc: Short summary post : . Req. Body: Opt, blank line + paras. Footer: Opt, blank line + token: value/token#value.
+Breaking (MAJOR): type[!scope]!: desc or BREAKING CHANGE: desc. Rules: Case-insensitive, except BREAKING CHANGE. feat=feature, fix=bug.
+ex:
+feat: config extend\n\nBREAKING CHANGE: extends key configs
+feat!: email ship
+docs: fix CHANGELOG
+fix: stop race\n\nAdd ID.\n\nReviewed-by: Z

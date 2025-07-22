@@ -37,6 +37,18 @@ defmodule Mulberry.Search.Brave do
           |> Mulberry.Document.WebPage.new()
         end)
 
+      [] ->
+        []
+        
+      list when is_list(list) ->
+        # Handle direct list of results
+        Enum.map(list, fn result ->
+          result
+          |> Map.take(["title", "description", "url"])
+          |> Flamel.Map.atomize_keys()
+          |> Mulberry.Document.WebPage.new()
+        end)
+
       response ->
         Logger.error("#{__MODULE__}.to_web_pages/1 respone=#{inspect(response)}")
         {:error, :parse_search_results_failed}

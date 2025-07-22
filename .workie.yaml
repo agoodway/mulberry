@@ -75,13 +75,12 @@
 # - .vscode/
 # - .idea/
 # - .sublime-project
-
+#
 # Post-creation hooks (uncomment and customize as needed)
 hooks:
   post_create:
     - "echo 'Setting up new worktree...'"
     - "mix deps.get"
-    - "claude"
 #   pre_remove:
 #     - "echo 'Cleaning up worktree...'"
 #     - "npm run cleanup"

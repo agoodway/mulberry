@@ -1,24 +1,28 @@
 defmodule Mulberry.Text do
   @moduledoc false
-  import Flamel.Wrap, only: [ok: 1]
 
   alias LangChain.Chains.LLMChain
-  alias LangChain.ChatModels.ChatOpenAI
   alias LangChain.Message
+  alias Mulberry.LangChain.Config
   alias TextChunker.Chunk
 
   @doc """
   Splits text into semantic chunks for processing.
+  
+  Returns a list of text chunks as strings for simple usage,
+  or {:ok, chunks} with full chunk data when needed.
   """
-  @spec split(String.t()) :: {:ok, [Chunk.t()]} | {:error, String.t()}
+  @spec split(String.t()) :: [String.t()] | {:ok, [Chunk.t()]} | {:error, String.t()}
   def split(text) when is_binary(text) do
-    text
-    |> TextChunker.split()
-    |> Enum.reduce([], fn chunk, acc ->
-      [Map.put(chunk, :text, String.replace(chunk.text, "\n", " ")) | acc]
-    end)
-    |> Enum.reverse()
-    |> ok()
+    chunks = 
+      text
+      |> TextChunker.split()
+      |> Enum.map(fn chunk ->
+        %{chunk | text: String.replace(chunk.text, "\n", " ")}
+      end)
+    
+    # Return just the text strings for backward compatibility
+    Enum.map(chunks, & &1.text)
   end
 
   def split(_) do
@@ -46,24 +50,41 @@ defmodule Mulberry.Text do
   def token_count(text) do
     text
     |> tokens()
-    |> then(fn
-      {:ok, tokens} -> Enum.count(tokens)
-      _ -> {:error, :tokenization_failed}
-    end)
+    |> case do
+      {:ok, tokens} -> {:ok, Enum.count(tokens)}
+      error -> error
+    end
   end
 
   @doc """
-  Generates a summary of the text using OpenAI's language model.
+  Generates a summary of the text using a language model.
 
   ## Options
-    * `:llm` - The language model to use. Defaults to ChatOpenAI.
-    * `:llm_config` - Configuration options for the language model.
-    * `:system_message` - Custom system message to override the default.
-    * `:additional_messages` - Additional messages to include in the conversation.
+    * `:provider` - The LLM provider to use (e.g., :openai, :anthropic, :google)
+    * `:model` - Override the default model for the provider
+    * `:temperature` - Override the temperature setting
+    * `:max_tokens` - Override the max tokens setting
+    * `:api_key` - Override the API key
+    * `:system_message` - Custom system message to override the default
+    * `:additional_messages` - Additional messages to include in the conversation
+    * `:llm` - A pre-configured LLM instance (for backward compatibility)
+    * `:llm_config` - Legacy configuration options (for backward compatibility)
   """
   @spec summarize(String.t(), Keyword.t()) :: {:ok, String.t()} | {:error, any()}
   def summarize(text, opts \\ []) do
-    llm = Keyword.get(opts, :llm) || ChatOpenAI.new!(Keyword.get(opts, :llm_config, []))
+    # Backward compatibility: check if :llm is provided
+    llm = 
+      case Keyword.get(opts, :llm) do
+        nil ->
+          # Use new configuration system
+          case Config.get_llm(:summarize, opts) do
+            {:ok, llm} -> llm
+            {:error, reason} -> raise "Failed to create LLM: #{inspect(reason)}"
+          end
+        llm -> 
+          # Use provided LLM instance for backward compatibility
+          llm
+      end
 
     default_system_message = """
     You are a helpful file contents extractor and summarizer.
@@ -107,14 +128,31 @@ defmodule Mulberry.Text do
   Generates a concise title (max 14 words) for the given text.
 
   ## Options
-    * `:llm` - The language model to use. Defaults to ChatOpenAI.
-    * `:llm_config` - Configuration options for the language model.
-    * `:system_message` - Custom system message to override the default.
-    * `:additional_messages` - Additional messages to include in the conversation.
+    * `:provider` - The LLM provider to use (e.g., :openai, :anthropic, :google)
+    * `:model` - Override the default model for the provider
+    * `:temperature` - Override the temperature setting
+    * `:max_tokens` - Override the max tokens setting
+    * `:api_key` - Override the API key
+    * `:system_message` - Custom system message to override the default
+    * `:additional_messages` - Additional messages to include in the conversation
+    * `:llm` - A pre-configured LLM instance (for backward compatibility)
+    * `:llm_config` - Legacy configuration options (for backward compatibility)
   """
   @spec title(String.t(), Keyword.t()) :: {:ok, String.t()} | {:error, any()}
   def title(text, opts \\ []) do
-    llm = Keyword.get(opts, :llm) || ChatOpenAI.new!(Keyword.get(opts, :llm_config, []))
+    # Backward compatibility: check if :llm is provided
+    llm = 
+      case Keyword.get(opts, :llm) do
+        nil ->
+          # Use new configuration system
+          case Config.get_llm(:title, opts) do
+            {:ok, llm} -> llm
+            {:error, reason} -> raise "Failed to create LLM: #{inspect(reason)}"
+          end
+        llm -> 
+          # Use provided LLM instance for backward compatibility
+          llm
+      end
 
     default_system_message = """
     You are a helpful copy writer.
@@ -147,11 +185,22 @@ defmodule Mulberry.Text do
     |> LLMChain.add_messages(messages)
     |> LLMChain.run(mode: :while_needs_response)
     |> case do
-      {:ok, _chain, %{content: content}} ->
-        {:ok, content}
+      {:ok, _chain, response} ->
+        # Handle the response - it might be a Message or a map
+        case response do
+          %{content: content} when is_binary(content) -> 
+            {:ok, content}
+          %LangChain.Message{content: content} when is_binary(content) -> 
+            {:ok, content}
+          _ -> 
+            {:error, "No content in response"}
+        end
 
+      {:error, _chain, error} ->
+        {:error, error}
+        
       error ->
-        error
+        {:error, error}
     end
   end
 end

@@ -1,6 +1,8 @@
 defmodule Mulberry.RetrieverTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   use Mimic
+  
+  setup :set_mimic_global
   import ExUnit.CaptureLog
   doctest Mulberry.Retriever
 
@@ -98,8 +100,8 @@ defmodule Mulberry.RetrieverTest do
         assert {:ok, _} = Retriever.get(modules, url)
       end)
       
-      assert log =~ "Error with Elixir.Mulberry.Retriever.Req"
-      assert log =~ "connection_error"
+      assert log =~ "Elixir.Mulberry.Retriever.get/2 module=Mulberry.Retriever.Req"
+      assert log =~ "Elixir.Mulberry.Retriever.get/2 module=Mulberry.Retriever.Playwright"
     end
 
     test "passes options to all retrievers" do

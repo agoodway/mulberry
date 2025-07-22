@@ -4,7 +4,6 @@ defmodule MulberryTest do
   doctest Mulberry
 
   alias Mulberry.Document.{File, WebPage}
-  alias Mulberry.Search
 
   describe "config/1" do
     test "returns configuration value for given key" do
@@ -61,10 +60,11 @@ defmodule MulberryTest do
       expect(Mulberry.Document, :load, fn %WebPage{url: ^url}, [] -> 
         {:ok, %WebPage{url: url, content: "Test content"}}
       end)
-      expect(Mulberry.Document, :generate_summary, fn {:ok, %WebPage{content: "Test content"}} -> 
+      expect(Mulberry.Document, :generate_summary, fn %WebPage{content: "Test content"} -> 
         {:ok, %WebPage{content: "Test content", summary: "Test summary"}}
       end)
-      expect(Mulberry.Document, :to_text, fn {:ok, %WebPage{summary: "Test summary"}} -> 
+      expect(Mulberry.Document, :to_text, fn web_page -> 
+        assert %WebPage{summary: "Test summary"} = web_page
         "Test summary"
       end)
 
@@ -79,10 +79,11 @@ defmodule MulberryTest do
       expect(Mulberry.Document, :load, fn %File{path: ^file_path}, [] -> 
         {:ok, %File{path: file_path, contents: "File content"}}
       end)
-      expect(Mulberry.Document, :generate_summary, fn {:ok, %File{contents: "File content"}} -> 
+      expect(Mulberry.Document, :generate_summary, fn %File{contents: "File content"} -> 
         {:ok, %File{contents: "File content", summary: "File summary"}}
       end)
-      expect(Mulberry.Document, :to_text, fn {:ok, %File{summary: "File summary"}} -> 
+      expect(Mulberry.Document, :to_text, fn file -> 
+        assert %File{summary: "File summary"} = file
         "File summary"
       end)
 

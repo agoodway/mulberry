@@ -1,10 +1,11 @@
 defmodule Mulberry.Retriever.ReqTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   use Mimic
+  
+  setup :set_mimic_global
   doctest Mulberry.Retriever.Req
 
   alias Mulberry.Retriever.Req, as: ReqRetriever
-  alias Mulberry.Retriever.Response
 
   describe "get/2" do
     test "successfully retrieves content" do
@@ -88,8 +89,8 @@ defmodule Mulberry.Retriever.ReqTest do
       end)
       
       assert {:error, response} = ReqRetriever.get(url)
-      assert response.status == 404
-      assert response.body == "Not Found"
+      assert response.status == :failed
+      assert response.content == nil
     end
   end
 end

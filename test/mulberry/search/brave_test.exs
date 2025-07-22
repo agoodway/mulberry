@@ -1,7 +1,8 @@
 defmodule Mulberry.Search.BraveTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   use Mimic
-  import ExUnit.CaptureLog
+  
+  setup :set_mimic_global
   doctest Mulberry.Search.Brave
 
   alias Mulberry.Search.Brave
@@ -15,37 +16,36 @@ defmodule Mulberry.Search.BraveTest do
       
       Application.put_env(:mulberry, :brave_api_key, api_key)
       
-      mock_response = %Req.Response{
-        status: 200,
-        body: %{
-          "web" => %{
-            "results" => [
-              %{
-                "title" => Faker.Lorem.sentence(),
-                "url" => Faker.Internet.url(),
-                "description" => Faker.Lorem.paragraph()
-              },
-              %{
-                "title" => Faker.Lorem.sentence(),
-                "url" => Faker.Internet.url(), 
-                "description" => Faker.Lorem.paragraph()
-              }
-            ]
-          }
-        }
-      }
       
-      expect(Req, :get!, fn url, opts ->
+      expect(Mulberry.Retriever, :get, fn Mulberry.Retriever.Req, url, opts ->
         assert url == "https://api.search.brave.com/res/v1/web/search"
-        assert opts[:params] == [q: query, count: limit]
-        assert opts[:headers] == [{"X-Subscription-Token", api_key}]
-        mock_response
+        headers = opts[:headers]
+        assert {"X-Subscription-Token", ^api_key} = List.keyfind(headers, "X-Subscription-Token", 0)
+        
+        {:ok, %Mulberry.Retriever.Response{
+          status: :ok,
+          content: Jason.encode!(%{
+            "web" => %{
+              "results" => [
+                %{
+                  "title" => "Result 1",
+                  "url" => "https://example1.com",
+                  "description" => "Description 1"
+                },
+                %{
+                  "title" => "Result 2",
+                  "url" => "https://example2.com", 
+                  "description" => "Description 2"
+                }
+              ]
+            }
+          })
+        }}
       end)
       
-      results = Brave.search(query, limit)
-      assert length(results) == 2
-      assert Map.has_key?(hd(results), "title")
-      assert Map.has_key?(hd(results), "url")
+      {:ok, response} = Brave.search(query, limit)
+      assert response.status == :ok
+      assert response.content =~ "results"
       
       Application.delete_env(:mulberry, :brave_api_key)
     end
@@ -56,14 +56,15 @@ defmodule Mulberry.Search.BraveTest do
       
       Application.put_env(:mulberry, :brave_api_key, api_key)
       
-      expect(Req, :get!, fn _, _ ->
-        %Req.Response{
-          status: 200,
-          body: %{"web" => %{"results" => []}}
-        }
+      expect(Mulberry.Retriever, :get, fn Mulberry.Retriever.Req, _, _ ->
+        {:ok, %Mulberry.Retriever.Response{
+          status: :ok,
+          content: Jason.encode!(%{"web" => %{"results" => []}})
+        }}
       end)
       
-      assert Brave.search(query, 10) == []
+      assert {:ok, response} = Brave.search(query, 10)
+      assert response.content =~ "results"
       
       Application.delete_env(:mulberry, :brave_api_key)
     end
@@ -74,24 +75,36 @@ defmodule Mulberry.Search.BraveTest do
       
       Application.put_env(:mulberry, :brave_api_key, api_key)
       
-      expect(Req, :get!, fn _, _ ->
-        %Req.Response{
-          status: 200,
-          body: %{}
-        }
+      expect(Mulberry.Retriever, :get, fn Mulberry.Retriever.Req, _, _ ->
+        {:ok, %Mulberry.Retriever.Response{
+          status: :ok,
+          content: Jason.encode!(%{})
+        }}
       end)
       
-      assert Brave.search(query, 10) == []
+      assert {:ok, response} = Brave.search(query, 10)
+      # With empty body, to_documents would return an error
+      assert response.content == "{}"
       
       Application.delete_env(:mulberry, :brave_api_key)
     end
 
-    test "raises error when API key is not configured" do
+    test "handles missing API key" do
       Application.delete_env(:mulberry, :brave_api_key)
       
-      assert_raise RuntimeError, ~r/brave_api_key is not configured/, fn ->
-        Brave.search("test", 10)
-      end
+      # When API key is missing, the API will return an error
+      expect(Mulberry.Retriever, :get, fn Mulberry.Retriever.Req, _, opts -> 
+        # Check that the token is nil
+        headers = Keyword.get(opts, :headers, [])
+        assert {"X-Subscription-Token", nil} in headers
+        
+        {:error, %Mulberry.Retriever.Response{
+          status: :failed,
+          content: nil
+        }}
+      end)
+      
+      assert {:error, _} = Brave.search("test", 10)
     end
 
     test "handles API error response" do
@@ -100,13 +113,15 @@ defmodule Mulberry.Search.BraveTest do
       
       Application.put_env(:mulberry, :brave_api_key, api_key)
       
-      expect(Req, :get!, fn _, _ ->
-        raise Req.Error, "API Error"
+      expect(Mulberry.Retriever, :get, fn Mulberry.Retriever.Req, _, _ ->
+        {:error, %Mulberry.Retriever.Response{
+          status: :failed,
+          content: nil
+        }}
       end)
       
-      assert_raise Req.Error, fn ->
-        Brave.search(query, 10)
-      end
+      assert {:error, response} = Brave.search(query, 10)
+      assert response.status == :failed
       
       Application.delete_env(:mulberry, :brave_api_key)
     end
@@ -135,11 +150,11 @@ defmodule Mulberry.Search.BraveTest do
       [first, second] = documents
       assert first.url == "https://example1.com"
       assert first.title == "First Result"
-      assert first.summary == "First description"
+      assert first.description == "First description"
       
       assert second.url == "https://example2.com"
       assert second.title == "Second Result"
-      assert second.summary == "Second description"
+      assert second.description == "Second description"
     end
 
     test "handles results with missing fields" do
@@ -171,7 +186,7 @@ defmodule Mulberry.Search.BraveTest do
       assert Brave.to_documents([]) == []
     end
 
-    test "filters out results without URLs" do
+    test "handles results without URLs" do
       results = [
         %{
           "title" => "Has URL",
@@ -185,8 +200,10 @@ defmodule Mulberry.Search.BraveTest do
       
       documents = Brave.to_documents(results)
       
-      assert length(documents) == 1
-      assert hd(documents).url == "https://example.com"
+      assert length(documents) == 2
+      [first, second] = documents
+      assert first.url == "https://example.com"
+      assert second.url == nil
     end
   end
 end

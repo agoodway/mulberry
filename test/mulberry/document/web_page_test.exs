@@ -1,17 +1,13 @@
 defmodule Mulberry.Document.WebPageTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   use Mimic
-  import ExUnit.CaptureLog
   doctest Mulberry.Document.WebPage
+  
+  setup :set_mimic_global
 
   alias Mulberry.Document.WebPage
   alias Mulberry.Retriever
-  alias Mulberry.Retriever.Response
-  alias Mulberry.HTML
   alias Mulberry.Text
-  alias LangChain.ChatModels.ChatOpenAI
-  alias LangChain.Chains.LLMChain
-  alias LangChain.Message
 
   describe "new/1" do
     test "creates a new WebPage struct with URL" do
@@ -50,40 +46,38 @@ defmodule Mulberry.Document.WebPageTest do
       html_content = "<html><body><p>#{Faker.Lorem.paragraph()}</p></body></html>"
       web_page = %WebPage{url: url}
       
-      expect(Retriever, :get, fn modules, ^url, opts -> 
-        assert modules == [Retriever.Req, Retriever.Playwright]
-        assert opts[:responder]
-        {:ok, %{body: html_content, status: 200}}
+      expect(Mulberry.Retriever, :get, fn module, ^url -> 
+        assert module == Retriever.Req
+        {:ok, %Mulberry.Retriever.Response{status: :ok, content: html_content}}
       end)
       
-      result = WebPage.load(web_page)
+      {:ok, result} = Mulberry.Document.load(web_page)
       
-      assert %WebPage{url: ^url, content: content} = result
-      assert is_binary(content)
-      assert content != ""
+      assert %WebPage{url: ^url, content: ^html_content} = result
+      assert result.markdown != nil
     end
 
     test "uses custom retrievers from options" do
       url = Faker.Internet.url()
       web_page = %WebPage{url: url}
-      custom_retrievers = [Retriever.ScrapingBee]
       
-      expect(Retriever, :get, fn ^custom_retrievers, ^url, _ -> 
-        {:ok, %{body: "<p>Content</p>", status: 200}}
+      expect(Mulberry.Retriever, :get, fn Retriever.ScrapingBee, ^url -> 
+        {:ok, %Mulberry.Retriever.Response{status: :ok, content: "<p>Content</p>"}}
       end)
       
-      WebPage.load(web_page, retrievers: custom_retrievers)
+      {:ok, _result} = Mulberry.Document.load(web_page, retriever: Retriever.ScrapingBee)
     end
 
     test "handles retriever error" do
       url = Faker.Internet.url()
       web_page = %WebPage{url: url}
       
-      expect(Retriever, :get, fn _, ^url, _ -> 
-        {:error, :connection_failed}
+      expect(Mulberry.Retriever, :get, fn Mulberry.Retriever.Req, ^url -> 
+        {:error, %Mulberry.Retriever.Response{status: :failed, content: nil}}
       end)
       
-      assert {:error, :connection_failed} = WebPage.load(web_page)
+      assert {:error, response, ^web_page} = Mulberry.Document.load(web_page)
+      assert %Mulberry.Retriever.Response{status: :failed} = response
     end
 
     test "extracts text from HTML response" do
@@ -99,11 +93,11 @@ defmodule Mulberry.Document.WebPageTest do
       </html>
       """
       
-      expect(Retriever, :get, fn _, ^url, _ -> 
-        {:ok, %{body: html, status: 200}}
+      expect(Mulberry.Retriever, :get, fn Mulberry.Retriever.Req, ^url -> 
+        {:ok, %Mulberry.Retriever.Response{status: :ok, content: html}}
       end)
       
-      result = WebPage.load(web_page)
+      {:ok, result} = Mulberry.Document.load(web_page)
       
       assert result.content =~ "Title"
       assert result.content =~ "First paragraph"
@@ -112,14 +106,6 @@ defmodule Mulberry.Document.WebPageTest do
   end
 
   describe "Document protocol implementation" do
-    setup do
-      # Common mocks for LLM operations
-      expect(ChatOpenAI, :new!, fn [] -> %ChatOpenAI{} end)
-      expect(LLMChain, :new!, fn _ -> %LLMChain{} end)
-      expect(LLMChain, :add_messages, fn chain, _ -> chain end)
-      :ok
-    end
-
     test "generate_summary/2" do
       markdown = Faker.Lorem.paragraphs(3) |> Enum.join("\n\n")
       web_page = %WebPage{
@@ -127,12 +113,14 @@ defmodule Mulberry.Document.WebPageTest do
         markdown: markdown
       }
       
-      expect(Text, :summarize, fn ^markdown -> 
+      expect(Mulberry.Text, :summarize, fn text -> 
+        assert text == markdown
         {:ok, "Generated summary"}
       end)
       
-      assert {:ok, %WebPage{summary: "Generated summary"}} = 
-        Mulberry.Document.generate_summary(web_page)
+      result = Mulberry.Document.generate_summary(web_page)
+      assert {:ok, %WebPage{summary: summary}} = result
+      assert summary == "Generated summary"
     end
 
     test "generate_keywords/2" do
@@ -151,12 +139,14 @@ defmodule Mulberry.Document.WebPageTest do
         markdown: markdown
       }
       
-      expect(Text, :title, fn ^markdown -> 
+      expect(Mulberry.Text, :title, fn text -> 
+        assert text == markdown
         {:ok, "Generated Title"}
       end)
       
-      assert {:ok, %WebPage{title: "Generated Title"}} = 
-        Mulberry.Document.generate_title(web_page)
+      result = Mulberry.Document.generate_title(web_page)
+      assert {:ok, %WebPage{title: title}} = result
+      assert title == "Generated Title"
     end
 
     test "generate_title/2 returns existing title" do
@@ -190,11 +180,12 @@ defmodule Mulberry.Document.WebPageTest do
       markdown = Faker.Lorem.paragraph()
       web_page = %WebPage{markdown: markdown}
       
-      expect(Text, :tokens, fn ^markdown -> 
+      expect(Mulberry.Text, :tokens, fn ^markdown -> 
         {:ok, ["token1", "token2", "token3"]}
       end)
       
-      assert {:ok, ["token1", "token2", "token3"]} = Mulberry.Document.to_tokens(web_page)
+      assert {:ok, tokens} = Mulberry.Document.to_tokens(web_page)
+      assert tokens == ["token1", "token2", "token3"]
     end
 
     test "to_tokens/2 returns error when not loaded" do
@@ -207,7 +198,7 @@ defmodule Mulberry.Document.WebPageTest do
       markdown = Faker.Lorem.paragraphs(5) |> Enum.join("\n\n")
       web_page = %WebPage{markdown: markdown}
       
-      expect(Text, :split, fn ^markdown -> 
+      expect(Mulberry.Text, :split, fn ^markdown -> 
         ["chunk1", "chunk2", "chunk3"]
       end)
       
@@ -239,7 +230,7 @@ defmodule Mulberry.Document.WebPageTest do
       # Should not crash
       assert {:ok, ""} = Mulberry.Document.to_text(web_page)
       
-      expect(Text, :split, fn "" -> [""] end)
+      expect(Mulberry.Text, :split, fn "" -> [""] end)
       assert {:ok, [""]} = Mulberry.Document.to_chunks(web_page)
     end
   end

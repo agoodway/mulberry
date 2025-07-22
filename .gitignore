@@ -27,3 +27,5 @@ mulberry-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+.scratchpad
