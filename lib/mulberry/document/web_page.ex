@@ -22,6 +22,10 @@ defmodule Mulberry.Document.WebPage do
             keywords: [],
             meta: []
 
+  @doc """
+  Creates a new WebPage document struct with the given attributes.
+  """
+  @spec new(map()) :: t()
   def new(attrs) do
     struct!(WebPage, attrs)
   end

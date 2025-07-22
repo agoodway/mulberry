@@ -1,4 +1,9 @@
 defmodule Mulberry.Retriever.Playwright do
+  @moduledoc """
+  Retriever implementation using Playwright for browser-based content fetching.
+  Useful for pages that require JavaScript execution or dynamic content loading.
+  """
+  
   @behaviour Mulberry.Retriever
   require Logger
 

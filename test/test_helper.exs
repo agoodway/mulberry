@@ -1,1 +1,13 @@
+Mimic.copy(Mulberry.Retriever)
+Mimic.copy(Mulberry.Retriever.Req)
+Mimic.copy(Mulberry.Retriever.Playwright)
+Mimic.copy(Mulberry.Retriever.ScrapingBee)
+Mimic.copy(Mulberry.Search.Brave)
+Mimic.copy(Mulberry.Document)
+Mimic.copy(Mulberry.Document.File)
+Mimic.copy(Mulberry.Document.WebPage)
+Mimic.copy(Mulberry.Text)
+Mimic.copy(LangChain.ChatModels.ChatOpenAI)
+Mimic.copy(LangChain.Chains.LLMChain)
+
 ExUnit.start()

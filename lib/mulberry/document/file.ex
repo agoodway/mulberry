@@ -15,6 +15,10 @@ defmodule Mulberry.Document.File do
 
   defstruct path: nil, contents: nil, summary: nil, keywords: [], title: nil, mime: nil, meta: []
 
+  @doc """
+  Creates a new File document struct with the given attributes.
+  """
+  @spec new(map()) :: t()
   def new(attrs) do
     attrs = Map.put_new(attrs, :mime, MIME.from_path(attrs.path))
     struct!(Mulberry.Document.File, attrs)

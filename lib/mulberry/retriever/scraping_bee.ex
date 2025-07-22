@@ -1,6 +1,15 @@
 defmodule Mulberry.Retriever.ScrapingBee do
+  @moduledoc """
+  Retriever implementation using the ScrapingBee API service for web scraping.
+  Handles complex scraping scenarios including JavaScript rendering and proxy rotation.
+  """
+  
   require Logger
 
+  @doc """
+  Fetches web content using the ScrapingBee API service.
+  """
+  @spec get(String.t(), Keyword.t()) :: {:ok, Mulberry.Retriever.Response.t()} | {:error, any()}
   def get(url, opts \\ []) do
     responder =
       Keyword.get(opts, :responder, &Mulberry.Retriever.Response.default_responder/1)

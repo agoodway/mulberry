@@ -1,9 +1,18 @@
 defmodule Mulberry.Retriever do
+  @moduledoc """
+  Behavior module for HTTP content retrieval with support for multiple retriever implementations.
+  Provides a unified interface for fetching web content using different strategies.
+  """
+  
   require Logger
 
   @callback get(String.t(), Keyword.t()) ::
               {:ok, map()} | {:error, atom()}
 
+  @doc """
+  Retrieves content from a URL using the specified retriever module(s).
+  """
+  @spec get(module() | [module()], String.t(), Keyword.t()) :: {:ok, map()} | {:error, atom()}
   def get(module, url, opts \\ [])
 
   def get(module, url, opts) when is_list(module) do

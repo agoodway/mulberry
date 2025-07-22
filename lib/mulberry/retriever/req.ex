@@ -1,4 +1,9 @@
 defmodule Mulberry.Retriever.Req do
+  @moduledoc """
+  Retriever implementation using the Req HTTP client for standard HTTP requests.
+  Provides a simple and efficient way to fetch content from URLs.
+  """
+  
   require Logger
   @behaviour Mulberry.Retriever
 

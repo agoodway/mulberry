@@ -3,7 +3,7 @@ defmodule Mulberry.Document.FileTest do
   doctest Mulberry
 
   alias Mulberry.Document
-  alias Flamel.Result
+  alias Flamel
 
   describe "fetch/2" do
     test "returns the text of a plain text file" do
@@ -17,9 +17,8 @@ defmodule Mulberry.Document.FileTest do
       "See now, how men lay blame upon us gods for what is after all nothing but their own folly. Look at Aegisthus; he must needs make love to Agamemnon's wife unrighteously and then kill Agamemnon, though he knew it would be the death of him; for I sent Mercury to warn him not to do either of these things, inasmuch as Orestes would be sure to take his revenge when he grew up and wanted to return home. Mercury told him this in all good will but he would not listen, and now he has paid for everything in full."
       """
 
-      file = Document.File.new(%{path: Path.safe_relative("./test/support/fixtures/files/text_file.txt") |> Result.unwrap_ok!()})
+      file = Document.File.new(%{path: Path.safe_relative("./test/support/fixtures/files/text_file.txt") |> Flamel.unwrap_ok!()})
       |> Document.load()
-      |> Result.unwrap_ok!()
 
       assert file.contents == expected_text
 

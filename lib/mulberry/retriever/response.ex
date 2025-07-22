@@ -9,6 +9,10 @@ defmodule Mulberry.Retriever.Response do
   defstruct status: nil,
             content: nil
 
+  @doc """
+  Default response handler that converts failed responses to errors.
+  """
+  @spec default_responder(t()) :: {:ok, t()} | {:error, t()}
   def default_responder(%Mulberry.Retriever.Response{status: :failed} = response),
     do: {:error, response}
 
