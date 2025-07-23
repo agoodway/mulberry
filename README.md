@@ -225,11 +225,13 @@ text = Mulberry.HTML.to_readable_text(html_tree)
 ### Advanced Text Processing
 
 ```elixir
-# Summarize with custom options
+# Summarize with custom options and strategies
 article = "Long article text..."
 {:ok, summary} = Mulberry.Text.summarize(article,
   provider: :anthropic,
   model: "claude-3-haiku-20240307",
+  strategy: :map_reduce,  # Use map-reduce for long texts
+  chunk_size: 1000,
   max_tokens: 150,
   system_message: "Summarize in bullet points"
 )
@@ -265,6 +267,81 @@ article = "Long article text..."
 
 # Enable verbose logging for debugging
 {:ok, summary} = Mulberry.Text.summarize(article, verbose: true)
+```
+
+### Document Summarization with Advanced Strategies
+
+Mulberry now uses an advanced chain-based summarization system internally, providing multiple strategies for handling documents of any size:
+
+```elixir
+alias Mulberry.Document
+alias Mulberry.Text
+
+# Load a document
+{:ok, doc} = Document.WebPage.new(%{url: "https://example.com"})
+             |> Document.load()
+
+# Basic summarization (uses stuff strategy by default)
+{:ok, doc_with_summary} = Document.generate_summary(doc)
+
+# Summarization with different strategies:
+
+# Stuff Strategy - concatenates all chunks and summarizes in one call (default)
+{:ok, summary} = Document.generate_summary(doc,
+  strategy: :stuff,
+  chunk_size: 1000
+)
+
+# Map-Reduce Strategy - summarizes chunks independently then combines
+{:ok, summary} = Document.generate_summary(doc,
+  strategy: :map_reduce,
+  chunk_size: 500,
+  on_progress: fn stage, info ->
+    IO.puts("Progress: #{stage} - #{inspect(info)}")
+  end
+)
+
+# Refine Strategy - iteratively refines summary with each chunk
+{:ok, summary} = Document.generate_summary(doc,
+  strategy: :refine,
+  chunk_overlap: 100
+)
+
+# Direct text summarization with advanced options
+text = "Long article text..."
+{:ok, summary} = Text.summarize(text,
+  strategy: :map_reduce,
+  chunk_size: 1000,
+  provider: :anthropic,
+  temperature: 0.3
+)
+
+# Custom prompts for specific summarization styles
+{:ok, bullet_summary} = Document.generate_summary(doc,
+  system_message: "Summarize as a bulleted list of key points"
+)
+
+# Works with any document type (WebPage, File, etc.)
+{:ok, pdf_doc} = Document.File.new(%{path: "report.pdf"})
+                 |> Document.load()
+                 
+{:ok, pdf_summary} = Document.generate_summary(pdf_doc,
+  strategy: :map_reduce,
+  provider: :anthropic
+)
+
+# Progress tracking for long documents
+{:ok, summary} = Text.summarize(long_text,
+  strategy: :map_reduce,
+  on_progress: fn stage, info ->
+    case stage do
+      :chunking -> IO.puts("Splitting into #{info.chunk_count} chunks")
+      :map -> IO.puts("Processing chunk #{info.current}/#{info.total}")
+      :reduce -> IO.puts("Combining summaries...")
+      :complete -> IO.puts("Summarization complete!")
+    end
+  end
+)
 ```
 
 ### Working with the Mix Task
