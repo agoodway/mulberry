@@ -104,6 +104,7 @@ defmodule Mulberry.Document.WebPage do
             {:ok, Map.replace(web_page, :title, title)}
 
           {:error, error} ->
+            Logger.error("#{__MODULE__} failed to generate title: #{inspect(error)}")
             {:error, error, web_page}
         end
       end
