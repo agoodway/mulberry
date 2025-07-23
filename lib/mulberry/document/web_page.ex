@@ -50,7 +50,7 @@ defmodule Mulberry.Document.WebPage do
               {:error, _error} ->
                 web_page
 
-              markdown ->
+              {:ok, markdown} ->
                 Map.replace(web_page, :markdown, markdown)
             end
 

@@ -172,10 +172,202 @@ Mulberry.search(Brave, "what is the best cake recipe?")
 |> Enum.filter(&Result.ok?/1)
 ```
 
-The chain above could be applied to ei
-
 The above example uses [Flamel](https://github.com/themusicman/flamel) chain a couple operations on the document and filter non-ok results. See [`Flamel.Chain`](https://hexdocs.pm/flamel/1.10.0/Flamel.Chain.html) and [`Result.ok?/1`](https://hexdocs.pm/flamel/1.10.0/Flamel.Result.html#ok?/1)
 
+### Web Scraping with Different Retrievers
+
+Mulberry supports multiple retriever strategies for fetching web content:
+
+```elixir
+# Use default retriever (Req)
+{:ok, webpage} = Mulberry.Document.WebPage.new("https://example.com")
+                 |> Mulberry.Document.load()
+
+# Use Playwright for JavaScript-heavy sites
+{:ok, webpage} = Mulberry.Document.WebPage.new("https://spa-app.com")
+                 |> Mulberry.Document.load(retriever: Mulberry.Retriever.Playwright)
+
+# Use ScrapingBee with API key
+{:ok, webpage} = Mulberry.Document.WebPage.new("https://protected-site.com")
+                 |> Mulberry.Document.load(
+                   retriever: Mulberry.Retriever.ScrapingBee,
+                   api_key: "your-scrapingbee-key"
+                 )
+
+# Try multiple retrievers in sequence
+retrievers = [Mulberry.Retriever.Req, Mulberry.Retriever.Playwright]
+{:ok, webpage} = Mulberry.Document.WebPage.new("https://example.com")
+                 |> Mulberry.Document.load(retriever: retrievers)
+```
+
+### Converting Web Pages to Different Formats
+
+```elixir
+# Load a webpage and convert to Markdown
+{:ok, webpage} = Mulberry.Document.WebPage.new("https://blog.example.com/article")
+                 |> Mulberry.Document.load()
+
+{:ok, markdown} = Mulberry.Document.to_text(webpage)
+
+# Convert HTML to Markdown directly
+html = "<h1>Title</h1><p>Some <strong>bold</strong> text</p>"
+{:ok, markdown} = Mulberry.HTML.to_markdown(html)
+# => "# Title\n\nSome **bold** text"
+
+# Extract clean text from HTML
+html_tree = Floki.parse_document!(html)
+text = Mulberry.HTML.to_readable_text(html_tree)
+```
+
+### Advanced Text Processing
+
+```elixir
+# Summarize with custom options
+article = "Long article text..."
+{:ok, summary} = Mulberry.Text.summarize(article,
+  provider: :anthropic,
+  model: "claude-3-haiku-20240307",
+  max_tokens: 150,
+  system_message: "Summarize in bullet points"
+)
+
+# Generate keywords
+{:ok, keywords} = Mulberry.Text.keywords(article, 
+  count: 10,
+  provider: :openai
+)
+
+# Create a title with specific style
+{:ok, title} = Mulberry.Text.title(article,
+  system_message: "Create a catchy, SEO-friendly title under 60 characters"
+)
+
+# Classify content
+{:ok, category} = Mulberry.Text.classify(article,
+  categories: ["Technology", "Business", "Health", "Sports"],
+  provider: :google
+)
+```
+
+### Working with the Mix Task
+
+```elixir
+# Fetch and display a webpage
+mix fetch_url https://example.com
+
+# Save webpage as HTML
+mix fetch_url https://example.com --save page.html
+
+# Convert to Markdown and save
+mix fetch_url https://example.com --markdown --save article.md
+
+# Extract text content only
+mix fetch_url https://example.com --show-text
+
+# Use specific browser and wait for content
+mix fetch_url https://spa-app.com --browser firefox --wait-for "#content"
+
+# Non-headless mode for debugging
+mix fetch_url https://example.com --no-headless
+
+# Disable stealth mode for faster scraping
+mix fetch_url https://example.com --no-stealth
+```
+
+### Processing Multiple Documents
+
+```elixir
+# Process search results in parallel
+alias Mulberry.{Search, Document, Text}
+
+urls = [
+  "https://example1.com",
+  "https://example2.com", 
+  "https://example3.com"
+]
+
+# Load all pages concurrently
+tasks = Enum.map(urls, fn url ->
+  Task.async(fn ->
+    Document.WebPage.new(url)
+    |> Document.load()
+  end)
+end)
+
+webpages = Task.await_many(tasks, 30_000)
+           |> Enum.filter(&match?({:ok, _}, &1))
+           |> Enum.map(fn {:ok, page} -> page end)
+
+# Generate summaries for all pages
+summaries = webpages
+            |> Enum.map(&Document.to_text/1)
+            |> Enum.map(fn {:ok, text} -> 
+              Task.async(fn -> Text.summarize(text) end)
+            end)
+            |> Task.await_many(30_000)
+```
+
+### Custom LLM Integration
+
+```elixir
+# Create a custom LLM function
+custom_llm = fn messages, _config ->
+  # Your custom LLM implementation
+  response = MyLLMService.chat(messages)
+  {:ok, response}
+end
+
+# Use with Mulberry functions
+{:ok, summary} = Mulberry.Text.summarize("Text to summarize",
+  llm: custom_llm,
+  system_message: "Custom instructions"
+)
+
+# Chain operations with custom LLM
+import Flamel.Chain
+
+webpage
+|> Chain.apply(&Document.load/1)
+|> Chain.apply(&Document.to_text/1)
+|> Chain.apply(&Text.summarize(&1, llm: custom_llm))
+|> Chain.to_tuple()
+```
+
+### Working with Local Files
+
+```elixir
+# Extract text from various file types
+alias Mulberry.Document
+
+# PDF file
+{:ok, pdf} = Document.File.new(%{path: "/path/to/document.pdf", mime: "application/pdf"})
+             |> Document.load()
+{:ok, text} = Document.to_text(pdf)
+
+# Image with OCR
+{:ok, image} = Document.File.new(%{path: "/path/to/scan.png", mime: "image/png"})
+               |> Document.load()
+{:ok, text} = Document.to_text(image)
+
+# Process uploaded files in Phoenix
+def handle_event("upload", _params, socket) do
+  consume_uploaded_entries(socket, :document, fn %{path: path}, entry ->
+    file = Document.File.new(%{path: path, mime: entry.client_type})
+    
+    with {:ok, doc} <- Document.load(file),
+         {:ok, text} <- Document.to_text(doc),
+         {:ok, summary} <- Text.summarize(text) do
+      {:ok, %{filename: entry.client_name, summary: summary}}
+    end
+  end)
+  |> case do
+    [{:ok, result}] -> 
+      {:noreply, assign(socket, :result, result)}
+    _ -> 
+      {:noreply, put_flash(socket, :error, "Failed to process file")}
+  end
+end
+```
 
 ## TODO
 
