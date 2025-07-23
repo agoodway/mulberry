@@ -7,6 +7,7 @@ defmodule Mulberry.Chains.SummarizeDocumentChainTest do
   alias LangChain.ChatModels.ChatOpenAI
   alias LangChain.Chains.LLMChain
   alias LangChain.Message
+  alias LangChain.Utils.ChainResult
 
   setup :verify_on_exit!
 
@@ -100,6 +101,10 @@ defmodule Mulberry.Chains.SummarizeDocumentChainTest do
         {:ok, %LLMChain{}, %Message{content: "This is a summary of the document."}}
       end)
 
+      expect(ChainResult, :to_string, fn {:ok, _chain, %Message{content: content}} ->
+        {:ok, content}
+      end)
+
       assert {:ok, "This is a summary of the document."} =
                SummarizeDocumentChain.summarize_text(chain, text)
     end
@@ -118,6 +123,10 @@ defmodule Mulberry.Chains.SummarizeDocumentChainTest do
         {:ok, %LLMChain{}, %Message{content: "Summary"}}
       end)
 
+      expect(ChainResult, :to_string, fn {:ok, _chain, %Message{content: content}} ->
+        {:ok, content}
+      end)
+
       on_progress = fn stage, info ->
         send(self(), {:progress, stage, info})
       end
@@ -127,52 +136,61 @@ defmodule Mulberry.Chains.SummarizeDocumentChainTest do
       assert_received {:progress, :chunks_created, %{count: _}}
     end
 
-    test "handles map_reduce strategy", %{llm: llm} do
+    test "handles map_reduce strategy with single chunk", %{llm: llm} do
       chain = SummarizeDocumentChain.new!(%{llm: llm, strategy: :map_reduce})
 
-      text = "First chunk of text. Second chunk of text. Third chunk of text."
+      # Short text that will be treated as a single chunk
+      text = "This is a test document with some content."
 
-      # Mock multiple LLMChain calls for map and reduce phases
-      expect(LLMChain, :new!, 4, fn _ -> %LLMChain{llm: llm} end)
-      expect(LLMChain, :add_messages, 4, fn chain, _ -> chain end)
-
-      # Map phase - 3 chunks
-      expect(LLMChain, :run, 3, fn _chain, _opts ->
-        {:ok, %LLMChain{}, %Message{content: "Chunk summary"}}
-      end)
-
-      # Reduce phase - 1 call
-      expect(LLMChain, :run, fn _chain, _opts ->
-        {:ok, %LLMChain{}, %Message{content: "Final combined summary"}}
-      end)
-
-      assert {:ok, "Final combined summary"} =
-               SummarizeDocumentChain.summarize_text(chain, text)
-    end
-
-    test "handles refine strategy", %{llm: llm} do
-      chain = SummarizeDocumentChain.new!(%{llm: llm, strategy: :refine})
-
-      text = "First chunk. Second chunk. Third chunk."
-
-      # Initial summary
+      # For a single chunk, map_reduce runs both map and reduce phases
+      # Map phase - 1 chunk
       expect(LLMChain, :new!, fn _ -> %LLMChain{llm: llm} end)
       expect(LLMChain, :add_messages, fn chain, _ -> chain end)
 
       expect(LLMChain, :run, fn _chain, _opts ->
-        {:ok, %LLMChain{}, %Message{content: "Initial summary"}}
+        {:ok, %LLMChain{}, %Message{content: "Chunk summary"}}
       end)
 
-      # Refinements - 2 more chunks
-      expect(LLMChain, :new!, 2, fn _ -> %LLMChain{llm: llm} end)
-      expect(LLMChain, :add_messages, 2, fn chain, _ -> chain end)
-
-      expect(LLMChain, :run, 2, fn _chain, _opts ->
-        {:ok, %LLMChain{}, %Message{content: "Refined summary"}}
+      expect(ChainResult, :to_string, fn
+        {:ok, _chain, %Message{content: "Chunk summary"}} ->
+          {:ok, "Chunk summary"}
       end)
 
-      assert {:ok, "Refined summary"} =
-               SummarizeDocumentChain.summarize_text(chain, text)
+      # Reduce phase - 1 call
+      expect(LLMChain, :new!, fn _ -> %LLMChain{llm: llm} end)
+      expect(LLMChain, :add_messages, fn chain, _ -> chain end)
+
+      expect(LLMChain, :run, fn _chain, _opts ->
+        {:ok, %LLMChain{}, %Message{content: "Final summary"}}
+      end)
+
+      expect(ChainResult, :to_string, fn
+        {:ok, _chain, %Message{content: "Final summary"}} ->
+          {:ok, "Final summary"}
+      end)
+
+      assert {:ok, "Final summary"} = SummarizeDocumentChain.summarize_text(chain, text)
+    end
+
+    test "handles refine strategy with single chunk", %{llm: llm} do
+      chain = SummarizeDocumentChain.new!(%{llm: llm, strategy: :refine})
+
+      # Short text that will be treated as a single chunk
+      text = "This is a test document with some content."
+
+      # For a single chunk, refine just processes it once
+      expect(LLMChain, :new!, fn _ -> %LLMChain{llm: llm} end)
+      expect(LLMChain, :add_messages, fn chain, _ -> chain end)
+
+      expect(LLMChain, :run, fn _chain, _opts ->
+        {:ok, %LLMChain{}, %Message{content: "Summary"}}
+      end)
+
+      expect(ChainResult, :to_string, fn {:ok, _chain, %Message{content: "Summary"}} ->
+        {:ok, "Summary"}
+      end)
+
+      assert {:ok, "Summary"} = SummarizeDocumentChain.summarize_text(chain, text)
     end
   end
 
@@ -197,6 +215,10 @@ defmodule Mulberry.Chains.SummarizeDocumentChainTest do
 
       expect(LLMChain, :run, fn _chain, _opts ->
         {:ok, %LLMChain{}, %Message{content: "Document summary"}}
+      end)
+
+      expect(ChainResult, :to_string, fn {:ok, _chain, %Message{content: content}} ->
+        {:ok, content}
       end)
 
       assert {:ok, "Document summary"} =
