@@ -16,6 +16,7 @@ defmodule Mix.Tasks.FetchUrl do
     * `--save` - Save HTML content to specified file
     * `--show-text` - Show extracted text content instead of HTML
     * `--markdown` - Convert HTML to Markdown format
+    * `--title` - Generate a title for the page content using AI
 
   ## Examples
 
@@ -39,6 +40,12 @@ defmodule Mix.Tasks.FetchUrl do
 
       # Wait for specific element
       mix fetch_url https://example.com --wait-for "#content"
+
+      # Generate a title for the page
+      mix fetch_url https://example.com --title
+
+      # Show text and generate title
+      mix fetch_url https://example.com --show-text --title
   """
 
   use Mix.Task
@@ -47,7 +54,7 @@ defmodule Mix.Tasks.FetchUrl do
 
   @impl Mix.Task
   def run(args) do
-    {opts, [url | _], _} = OptionParser.parse(args,
+    {opts, args_list, _} = OptionParser.parse(args,
       switches: [
         headless: :boolean,
         browser: :string,
@@ -56,7 +63,8 @@ defmodule Mix.Tasks.FetchUrl do
         wait_for: :string,
         save: :string,
         show_text: :boolean,
-        markdown: :boolean
+        markdown: :boolean,
+        title: :boolean
       ],
       aliases: [
         h: :headless,
@@ -68,6 +76,8 @@ defmodule Mix.Tasks.FetchUrl do
       ]
     )
 
+    url = List.first(args_list)
+    
     unless url do
       Mix.raise("URL is required. Usage: mix fetch_url URL [options]")
     end
@@ -153,6 +163,11 @@ defmodule Mix.Tasks.FetchUrl do
   end
 
   defp handle_success(html, opts) do
+    # Generate title if requested
+    if opts[:title] do
+      generate_and_show_title(html)
+    end
+    
     cond do
       opts[:markdown] && opts[:save] ->
         save_as_markdown(html, opts[:save])
@@ -252,6 +267,32 @@ defmodule Mix.Tasks.FetchUrl do
     case Regex.run(~r/<title[^>]*>([^<]+)<\/title>/i, html) do
       [_, title] -> Mix.shell().info("Page title: #{String.trim(title)}")
       _ -> Mix.shell().info("Page title: (not found)")
+    end
+  end
+
+  @spec generate_and_show_title(String.t()) :: :ok
+  defp generate_and_show_title(html) do
+    Mix.shell().info("")
+    Mix.shell().info("Generating AI title...")
+    
+    # Extract text content from HTML
+    text = 
+      html
+      |> Floki.parse_document!()
+      |> Mulberry.HTML.to_readable_text()
+      |> String.trim()
+    
+    # Generate title using AI
+    case Mulberry.Text.title(text, max_words: 14, verbose: false) do
+      {:ok, generated_title} ->
+        Mix.shell().info("=" <> String.duplicate("=", 79))
+        Mix.shell().info("AI Generated Title: #{generated_title}")
+        Mix.shell().info("=" <> String.duplicate("=", 79))
+        Mix.shell().info("")
+        
+      {:error, reason} ->
+        Mix.shell().error("Failed to generate title: #{inspect(reason)}")
+        Mix.shell().info("")
     end
   end
 end

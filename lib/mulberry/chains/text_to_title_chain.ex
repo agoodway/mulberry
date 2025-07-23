@@ -179,6 +179,10 @@ Before generating a title from the content, consider the following:
       {:ok, _updated_chain, response} ->
         extract_content(response)
         
+      {:ok, %LLMChain{last_message: last_message}} when not is_nil(last_message) ->
+        # Handle the case where only the chain is returned
+        extract_content(last_message)
+        
       {:error, _updated_chain, error} ->
         {:error, error}
         
