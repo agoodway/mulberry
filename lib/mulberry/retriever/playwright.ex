@@ -13,7 +13,7 @@ defmodule Mulberry.Retriever.Playwright do
   ## Options
   
   * `:browser` - Browser type to use (:chromium, :firefox, :webkit). Default: :chromium
-  * `:headless` - Whether to run browser in headless mode. Default: false (for better stealth)
+  * `:headless` - Whether to run browser in headless mode. Default: true
   * `:user_agent` - Custom user agent string. Default: randomly selected from common agents
   * `:viewport` - Map with :width and :height keys. Default: randomly selected common size
   * `:stealth_mode` - Enable/disable stealth features. Default: true
@@ -29,7 +29,7 @@ defmodule Mulberry.Retriever.Playwright do
       # Basic usage with default stealth settings
       Mulberry.Retriever.Playwright.get("https://example.com")
       
-      # Custom configuration
+      # Custom configuration with visible browser
       Mulberry.Retriever.Playwright.get("https://example.com",
         user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)...",
         viewport: %{width: 1920, height: 1080},
@@ -97,7 +97,7 @@ defmodule Mulberry.Retriever.Playwright do
   @spec launch_browser(Keyword.t()) :: {:ok, Playwright.Browser.t()} | {:error, any()}
   defp launch_browser(opts) do
     browser_type = Keyword.get(opts, :browser, :chromium)
-    headless = Keyword.get(opts, :headless, false)
+    headless = Keyword.get(opts, :headless, true)
     
     launch_options = %{
       headless: headless,
