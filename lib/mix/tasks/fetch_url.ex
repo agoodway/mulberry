@@ -85,7 +85,6 @@ defmodule Mix.Tasks.FetchUrl do
     # Fetch the URL
     result = Mulberry.Retriever.Playwright.get(url, retriever_opts)
 
-    IO.inspect(result: result)
     
     case result do
       {:ok, %Mulberry.Retriever.Response{status: :ok, content: html}} ->

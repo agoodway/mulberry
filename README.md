@@ -245,6 +245,18 @@ article = "Long article text..."
   system_message: "Create a catchy, SEO-friendly title under 60 characters"
 )
 
+# Generate title with examples to guide style
+{:ok, title} = Mulberry.Text.title(article,
+  examples: ["10 Ways to Boost Productivity", "The Ultimate Guide to Elixir"],
+  max_words: 10
+)
+
+# Title generation with fallback
+{:ok, title} = Mulberry.Text.title(article,
+  fallback_title: "Technology Article",
+  verbose: true
+)
+
 # Classify content
 {:ok, category} = Mulberry.Text.classify(article,
   categories: ["Technology", "Business", "Health", "Sports"],

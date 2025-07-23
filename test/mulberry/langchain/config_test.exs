@@ -196,6 +196,7 @@ defmodule Mulberry.LangChain.ConfigTest do
       System.delete_env("OPENAI_API_KEY")
       System.delete_env("MULBERRY_OPENAI_MODEL")
       System.delete_env("MULBERRY_OPENAI_ENDPOINT")
+      System.delete_env("MULBERRY_OPENAI_MAX_TOKENS")
       :ok
     end
     
