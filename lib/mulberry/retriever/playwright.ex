@@ -146,7 +146,7 @@ defmodule Mulberry.Retriever.Playwright do
     }
 
     # Create context with options
-    {:ok, context} = Playwright.Browser.new_context(browser, context_options)
+    context = Playwright.Browser.new_context(browser, context_options)
     
     # Create page from context
     case Playwright.BrowserContext.new_page(context) do
