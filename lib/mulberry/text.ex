@@ -69,6 +69,7 @@ defmodule Mulberry.Text do
     * `:additional_messages` - Additional messages to include in the conversation
     * `:llm` - A pre-configured LLM instance (for backward compatibility)
     * `:llm_config` - Legacy configuration options (for backward compatibility)
+    * `:verbose` - Enable verbose logging for debugging (default: false)
   """
   @spec summarize(String.t(), Keyword.t()) :: {:ok, String.t()} | {:error, any()}
   def summarize(text, opts \\ []) do
@@ -118,7 +119,9 @@ defmodule Mulberry.Text do
       #{text}
       """)]
 
-    case run_chain(llm, messages) do
+    verbose = Keyword.get(opts, :verbose, false)
+    
+    case run_chain(llm, messages, verbose) do
       {:ok, summary} -> {:ok, summary}
       error -> {:error, error}
     end
@@ -137,6 +140,7 @@ defmodule Mulberry.Text do
     * `:additional_messages` - Additional messages to include in the conversation
     * `:llm` - A pre-configured LLM instance (for backward compatibility)
     * `:llm_config` - Legacy configuration options (for backward compatibility)
+    * `:verbose` - Enable verbose logging for debugging (default: false)
   """
   @spec title(String.t(), Keyword.t()) :: {:ok, String.t()} | {:error, any()}
   def title(text, opts \\ []) do
@@ -173,14 +177,19 @@ defmodule Mulberry.Text do
       additional_messages ++
       [Message.new_user!("content: #{text}")]
 
-    case run_chain(llm, messages) do
+    verbose = Keyword.get(opts, :verbose, false)
+    
+    case run_chain(llm, messages, verbose) do
       {:ok, summary} -> {:ok, summary}
       error -> {:error, error}
     end
   end
 
-  defp run_chain(llm, messages) do
-    %{llm: llm, verbose: false}
+  defp run_chain(llm, messages, verbose) do
+    # Get verbose setting from application config if not explicitly passed
+    verbose = verbose || Application.get_env(:mulberry, :verbose_logging, false)
+    
+    %{llm: llm, verbose: verbose}
     |> LLMChain.new!()
     |> LLMChain.add_messages(messages)
     |> LLMChain.run(mode: :while_needs_response)

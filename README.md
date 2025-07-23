@@ -64,6 +64,9 @@ config :mulberry, :langchain,
       temperature: 0.5
     ]
   ]
+
+# Enable verbose logging for debugging
+config :mulberry, :verbose_logging, true
 ```
 
 ### Supported LLM Providers
@@ -247,6 +250,9 @@ article = "Long article text..."
   categories: ["Technology", "Business", "Health", "Sports"],
   provider: :google
 )
+
+# Enable verbose logging for debugging
+{:ok, summary} = Mulberry.Text.summarize(article, verbose: true)
 ```
 
 ### Working with the Mix Task
