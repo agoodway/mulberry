@@ -1,8 +1,6 @@
 defmodule Mulberry.Text do
   @moduledoc false
 
-  alias LangChain.Chains.LLMChain
-  alias LangChain.Message
   alias Mulberry.LangChain.Config
   alias Mulberry.Chains.TextToTitleChain
   alias TextChunker.Chunk
@@ -174,62 +172,26 @@ defmodule Mulberry.Text do
           llm
       end
 
-    default_system_message = """
-    You are a helpful copy writer.
-    Please analyze the content and generate a title that is no more than 14 words.
-    Before generating a title from the content, consider the following:
-    - Identify the main themes, topics, or ideas discussed in the content.
-    - Recognize important facts, figures, or examples that support the main points.
-    - Capture any essential context or background information necessary for understanding the content.
-    - Use clear and concise language to convey the content effectively using an unbiased and journalistic tone.
-    - Do not start the title with "Title:"
-    """
-
-    system_message = Keyword.get(opts, :system_message, default_system_message)
-    additional_messages = Keyword.get(opts, :additional_messages, [])
-
-    messages =
-      [Message.new_system!(system_message)] ++
-        additional_messages ++
-        [Message.new_user!("content: #{text}")]
-
-    verbose = Keyword.get(opts, :verbose, false)
-
-    case run_chain(llm, messages, verbose) do
-      {:ok, summary} -> {:ok, summary}
-      error -> {:error, error}
+    # Build chain attributes
+    chain_attrs = %{
+      llm: llm,
+      input_text: text,
+      verbose: Keyword.get(opts, :verbose, false),
+      examples: Keyword.get(opts, :examples, []),
+      fallback_title: Keyword.get(opts, :fallback_title, "Untitled"),
+      max_words: Keyword.get(opts, :max_words, 14),
+      additional_messages: Keyword.get(opts, :additional_messages, [])
+    }
+    
+    # Handle custom system message if provided
+    chain_attrs = if system_message = Keyword.get(opts, :system_message) do
+      Map.put(chain_attrs, :override_system_prompt, system_message)
+    else
+      chain_attrs
     end
+
+    chain_attrs
     |> TextToTitleChain.new!()
     |> TextToTitleChain.evaluate()
-  end
-
-  defp run_chain(llm, messages, verbose) do
-    # Get verbose setting from application config if not explicitly passed
-    verbose = verbose || Application.get_env(:mulberry, :verbose_logging, false)
-
-    %{llm: llm, verbose: verbose}
-    |> LLMChain.new!()
-    |> LLMChain.add_messages(messages)
-    |> LLMChain.run(mode: :while_needs_response)
-    |> case do
-      {:ok, _chain, response} ->
-        # Handle the response - it might be a Message or a map
-        case response do
-          %{content: content} when is_binary(content) ->
-            {:ok, content}
-
-          %LangChain.Message{content: content} when is_binary(content) ->
-            {:ok, content}
-
-          _ ->
-            {:error, "No content in response"}
-        end
-
-      {:error, _chain, error} ->
-        {:error, error}
-
-      error ->
-        {:error, error}
-    end
   end
 end
