@@ -44,8 +44,8 @@ defmodule Mulberry.Search.Reddit do
   def search(query, _count \\ 20, opts \\ []) do
     retriever = Keyword.get(opts, :retriever, Mulberry.Retriever.Req)
 
-    # Build parameters - only add 'q' which is required
-    params = %{q: query}
+    # Build parameters - only add 'query' which is required
+    params = %{query: query}
     |> maybe_add_param(:sort, Keyword.get(opts, :sort))
     |> maybe_add_param(:timeframe, Keyword.get(opts, :timeframe))
     |> maybe_add_param(:after, Keyword.get(opts, :after))

@@ -14,7 +14,7 @@ defmodule Mulberry.Search.RedditTest do
         assert url == "https://api.scrapecreators.com/v1/reddit/search"
         
         # Check params
-        assert opts[:params] == %{q: "elixir programming"}
+        assert opts[:params] == %{query: "elixir programming"}
         
         # Check headers
         headers = opts[:headers]
@@ -30,7 +30,7 @@ defmodule Mulberry.Search.RedditTest do
     test "includes optional parameters when provided" do
       expect(Retriever, :get, fn _module, _url, opts ->
         params = opts[:params]
-        assert params.q == "test query"
+        assert params.query == "test query"
         assert params.sort == "top"
         assert params.timeframe == "month"
         assert params.after == "t3_123456"
