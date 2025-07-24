@@ -51,6 +51,7 @@ defmodule Mulberry do
     known_mappings = %{
       brave_api_key: "BRAVE_API_KEY",
       scraping_bee_api_key: "SCRAPING_BEE_API_KEY",
+      scrapecreators_api_key: "SCRAPECREATORS_API_KEY",
       openai_api_key: "OPENAI_API_KEY",
       anthropic_api_key: "ANTHROPIC_API_KEY",
       google_api_key: "GOOGLE_API_KEY",

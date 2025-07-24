@@ -10,7 +10,9 @@ defmodule Mulberry.Document.WebPage do
           markdown: String.t(),
           summary: String.t(),
           keywords: list(),
-          meta: list()
+          meta: list(),
+          type: String.t() | nil,
+          network: String.t() | nil
         }
 
   defstruct url: nil,
@@ -20,7 +22,9 @@ defmodule Mulberry.Document.WebPage do
             markdown: nil,
             summary: nil,
             keywords: [],
-            meta: []
+            meta: [],
+            type: nil,
+            network: nil
 
   @doc """
   Creates a new WebPage document struct with the given attributes.
