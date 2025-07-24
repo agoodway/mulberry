@@ -90,7 +90,10 @@ defmodule Mulberry.Search.BraveTest do
     end
 
     test "handles missing API key" do
+      # Clear both app config and env var
       Application.delete_env(:mulberry, :brave_api_key)
+      original_env = System.get_env("BRAVE_API_KEY")
+      System.delete_env("BRAVE_API_KEY")
       
       # When API key is missing, the API will return an error
       expect(Mulberry.Retriever, :get, fn Mulberry.Retriever.Req, _, opts -> 
@@ -105,6 +108,11 @@ defmodule Mulberry.Search.BraveTest do
       end)
       
       assert {:error, _} = Brave.search("test", 10)
+      
+      # Restore original env if it existed
+      if original_env do
+        System.put_env("BRAVE_API_KEY", original_env)
+      end
     end
 
     test "handles API error response" do
@@ -142,7 +150,7 @@ defmodule Mulberry.Search.BraveTest do
         }
       ]
       
-      documents = Brave.to_documents(results)
+      assert {:ok, documents} = Brave.to_documents(results)
       
       assert length(documents) == 2
       assert Enum.all?(documents, &match?(%WebPage{}, &1))
@@ -170,7 +178,7 @@ defmodule Mulberry.Search.BraveTest do
         }
       ]
       
-      documents = Brave.to_documents(results)
+      assert {:ok, documents} = Brave.to_documents(results)
       
       assert length(documents) == 2
       
@@ -183,7 +191,7 @@ defmodule Mulberry.Search.BraveTest do
     end
 
     test "handles empty results list" do
-      assert Brave.to_documents([]) == []
+      assert Brave.to_documents([]) == {:ok, []}
     end
 
     test "handles results without URLs" do
@@ -198,12 +206,47 @@ defmodule Mulberry.Search.BraveTest do
         }
       ]
       
-      documents = Brave.to_documents(results)
+      assert {:ok, documents} = Brave.to_documents(results)
       
       assert length(documents) == 2
       [first, second] = documents
       assert first.url == "https://example.com"
       assert second.url == nil
+    end
+
+    test "handles Brave API response format with web results" do
+      response = %{
+        "web" => %{
+          "results" => [
+            %{
+              "title" => "Test Result",
+              "url" => "https://example.com",
+              "description" => "Test description"
+            }
+          ]
+        },
+        "type" => "search"
+      }
+      
+      assert {:ok, documents} = Brave.to_documents(response)
+      assert length(documents) == 1
+      assert [%WebPage{url: "https://example.com", title: "Test Result"}] = documents
+    end
+
+    test "handles Brave API response format without web results" do
+      response = %{
+        "type" => "search",
+        "mixed" => %{"main" => [], "side" => [], "top" => []},
+        "query" => %{"original" => "test query"}
+      }
+      
+      assert {:ok, []} = Brave.to_documents(response)
+    end
+
+    test "handles unexpected response format" do
+      response = %{"unexpected" => "format"}
+      
+      assert {:error, :parse_search_results_failed} = Brave.to_documents(response)
     end
   end
 end

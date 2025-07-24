@@ -29,28 +29,38 @@ defmodule Mulberry.Search.Brave do
   @impl true
   def to_documents(results) do
     case results do
-      %{"web" => %{"results" => results}} ->
-        Enum.map(results, fn result ->
+      %{"web" => %{"results" => results}} when is_list(results) and length(results) > 0 ->
+        docs = Enum.map(results, fn result ->
           result
           |> Map.take(["title", "description", "url"])
           |> Flamel.Map.atomize_keys()
           |> Mulberry.Document.WebPage.new()
         end)
+        {:ok, docs}
+
+      %{"web" => %{"results" => []}} ->
+        # No results found, which is normal
+        {:ok, []}
+        
+      %{"type" => "search"} ->
+        # Search response without web results - this is normal for some queries
+        {:ok, []}
 
       [] ->
-        []
+        {:ok, []}
         
       list when is_list(list) ->
         # Handle direct list of results
-        Enum.map(list, fn result ->
+        docs = Enum.map(list, fn result ->
           result
           |> Map.take(["title", "description", "url"])
           |> Flamel.Map.atomize_keys()
           |> Mulberry.Document.WebPage.new()
         end)
+        {:ok, docs}
 
       response ->
-        Logger.error("#{__MODULE__}.to_web_pages/1 respone=#{inspect(response)}")
+        Logger.error("#{__MODULE__}.to_documents/1 unexpected response format: #{inspect(response)}")
         {:error, :parse_search_results_failed}
     end
   end
