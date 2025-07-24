@@ -11,11 +11,27 @@ defmodule Mulberry.Search.Brave do
   @brave_search_url "https://api.search.brave.com/res/v1/web/search"
 
   @impl true
-  def search(query, count \\ 20, result_filter \\ "query, web", opts \\ []) do
+  def search(query, count \\ 20, opts \\ []) do
     retriever = Keyword.get(opts, :retriever, Mulberry.Retriever.Req)
+    result_filter = Keyword.get(opts, :result_filter, "web,query")
+    include_domains = Keyword.get(opts, :include_domains, [])
+    exclude_domains = Keyword.get(opts, :exclude_domains, [])
+    
+    # Build params
+    params = %{
+      q: query,
+      count: count
+    }
+    
+    # Add result_filter if specified
+    params = if result_filter, do: Map.put(params, :result_filter, result_filter), else: params
+    
+    # Add domain filters if specified
+    params = if include_domains != [], do: Map.put(params, :include_domains, Enum.join(include_domains, ",")), else: params
+    params = if exclude_domains != [], do: Map.put(params, :exclude_domains, Enum.join(exclude_domains, ",")), else: params
 
     request_opts = [
-      params: %{q: query, result_filter: result_filter, count: count},
+      params: params,
       headers: [
         {"Accept", "application/json"},
         {"Accept-Encoding", "gzip"},

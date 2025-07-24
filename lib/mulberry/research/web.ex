@@ -206,60 +206,45 @@ defmodule Mulberry.Research.Web do
   defp ensure_enough_queries(queries, _topic, _needed), do: queries
 
   defp perform_searches(queries, %Chain{} = chain, opts) do
-    search_module = get_search_module()
+    search_modules = Chain.get_search_modules(chain)
     max_sources = chain.max_sources
     
-    # Calculate how many results we need per query
-    results_per_query = max(div(max_sources * 2, length(queries)), 1)
-    
-    results =
-      queries
-      |> perform_searches_with_fallback(search_module, results_per_query, chain, opts)
-      |> Enum.uniq_by(& &1.url)
+    # Perform parallel searches across all modules
+    results = 
+      search_modules
+      |> Task.async_stream(
+        fn module_config ->
+          perform_module_searches(queries, module_config, chain, opts)
+        end,
+        timeout: 30_000,
+        on_timeout: :kill_task
+      )
+      |> Enum.flat_map(fn
+        {:ok, module_results} -> module_results
+        {:exit, :timeout} -> 
+          maybe_log(chain, "Search module timed out")
+          []
+        _ -> []
+      end)
+      |> deduplicate_and_rank(search_modules)
     
     # Ensure we have at least max_sources results
     if length(results) < max_sources do
       # Try broader searches if we don't have enough
-      additional_results = perform_fallback_searches(
-        search_module, 
+      additional_results = perform_fallback_searches_multi(
+        search_modules,
         max_sources - length(results),
         chain,
         opts
       )
       
-      all_results = (results ++ additional_results) |> Enum.uniq_by(& &1.url)
-      {:ok, all_results}
+      all_results = (results ++ additional_results) |> deduplicate_and_rank(search_modules)
+      {:ok, Enum.take(all_results, max_sources * 2)} # Take more than needed for filtering
     else
       {:ok, results}
     end
   end
   
-  defp perform_searches_with_fallback(queries, search_module, results_per_query, chain, _opts) do
-    search_opts = Map.merge(chain.search_options, %{
-      include_domains: chain.include_domains,
-      exclude_domains: chain.exclude_domains
-    })
-    |> Map.to_list()
-    
-    queries
-    |> Enum.flat_map(fn query ->
-      search_and_convert(search_module, query, results_per_query, search_opts)
-    end)
-  end
-  
-  defp perform_fallback_searches(search_module, needed, %Chain{} = chain, opts) do
-    # Get topic from opts or use a generic fallback
-    topic = Keyword.get(opts, :topic, "research")
-    fallback_query = topic
-    
-    search_opts = Map.merge(chain.search_options, %{
-      include_domains: chain.include_domains,
-      exclude_domains: chain.exclude_domains
-    })
-    |> Map.to_list()
-    
-    search_and_convert(search_module, fallback_query, needed, search_opts)
-  end
 
   defp fetch_documents(search_results, %Chain{} = _chain, opts) do
     documents =
@@ -687,22 +672,87 @@ defmodule Mulberry.Research.Web do
     |> ChainResult.to_string()
   end
 
-  defp search_and_convert(search_module, query, max_sources, search_opts) do
-    case search_module.search(query, max_sources, "query, web", search_opts) do
+  
+  defp perform_module_searches(queries, module_config, chain, _opts) do
+    %{module: search_module, options: module_options, weight: weight} = module_config
+    
+    # Calculate results per query for this module
+    results_per_query = max(div(chain.max_sources * 2, length(queries)), 1)
+    
+    # Merge module-specific options with chain search options
+    # First merge chain options, then module options (module options take precedence)
+    search_opts = chain.search_options
+    |> Map.merge(%{
+      include_domains: chain.include_domains,
+      exclude_domains: chain.exclude_domains
+    })
+    |> Map.merge(module_options)
+    |> Enum.into([])
+    
+    # Perform searches and add module metadata
+    queries
+    |> Enum.flat_map(fn query ->
+      search_and_convert_with_metadata(search_module, query, results_per_query, search_opts, weight)
+    end)
+  end
+  
+  defp search_and_convert_with_metadata(search_module, query, max_sources, search_opts, weight) do
+    case apply(search_module, :search, [query, max_sources, search_opts]) do
       {:ok, %Mulberry.Retriever.Response{status: :ok, content: content}} -> 
-        case search_module.to_documents(content) do
-          {:ok, docs} -> docs
-          _ -> []
-        end
+        convert_and_add_metadata(search_module, content, weight)
+      {:ok, content} when is_map(content) ->
+        convert_and_add_metadata(search_module, content, weight)
       {:error, _} -> []
       _ -> []
     end
   end
-
-  defp get_search_module do
-    # Could be made configurable
-    Mulberry.Search.Brave
+  
+  defp convert_and_add_metadata(search_module, content, weight) do
+    case search_module.to_documents(content) do
+      {:ok, docs} -> 
+        add_search_metadata(docs, search_module, weight)
+      _ -> []
+    end
   end
+  
+  defp add_search_metadata(docs, search_module, weight) do
+    Enum.map(docs, fn doc ->
+      updated_meta = (doc.meta || []) ++ [
+        search_module: search_module,
+        search_weight: weight
+      ]
+      %{doc | meta: updated_meta}
+    end)
+  end
+  
+  defp deduplicate_and_rank(results, _search_modules) do
+    # Group by URL, keeping the highest weighted version
+    results
+    |> Enum.group_by(& &1.url)
+    |> Enum.map(fn {_url, docs} ->
+      # Keep the document with highest weight
+      Enum.max_by(docs, fn doc ->
+        Keyword.get(doc.meta || [], :search_weight, 1.0)
+      end)
+    end)
+    |> Enum.sort_by(fn doc ->
+      # Sort by weight (descending)
+      weight = Keyword.get(doc.meta || [], :search_weight, 1.0)
+      -weight
+    end)
+  end
+  
+  defp perform_fallback_searches_multi(search_modules, needed, chain, opts) do
+    topic = Keyword.get(opts, :topic, "research")
+    
+    search_modules
+    |> Enum.take(2) # Use first 2 modules for fallback
+    |> Enum.flat_map(fn module_config ->
+      perform_module_searches([topic], module_config, chain, opts)
+    end)
+    |> Enum.take(needed)
+  end
+
 
   defp maybe_log(%Chain{verbose: true}, message), do: Logger.info(message)
   defp maybe_log(_, _), do: :ok

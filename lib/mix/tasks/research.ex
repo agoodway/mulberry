@@ -19,6 +19,8 @@ defmodule Mix.Tasks.Research do
     * `--domains` - Domains to include in web search
     * `--exclude-domains` - Domains to exclude from web search
     * `--content-length` - Detail level for content: short, medium, long, comprehensive (default: medium)
+    * `--search-module` - Search module to use (e.g., brave, reddit)
+    * `--search-modules` - JSON array of search module configs for multi-source search
 
   ## Examples
 
@@ -41,6 +43,15 @@ defmodule Mix.Tasks.Research do
       # Web research with domain filtering
       mix research "elixir programming" --domains "elixir-lang.org,hexdocs.pm" \\
         --exclude-domains "reddit.com"
+      
+      # Research using Reddit as search source
+      mix research "machine learning" --search-module reddit
+      
+      # Multi-source research with Brave and Reddit
+      mix research "elixir tips" --search-modules '[
+        {"module": "brave", "options": {}},
+        {"module": "reddit", "options": {"sort": "top"}, "weight": 1.5}
+      ]'
   """
 
   use Mix.Task
@@ -61,7 +72,9 @@ defmodule Mix.Tasks.Research do
         file_patterns: :string,
         domains: :string,
         exclude_domains: :string,
-        content_length: :string
+        content_length: :string,
+        search_module: :string,
+        search_modules: :string
       ],
       aliases: [
         s: :strategy,
@@ -158,6 +171,9 @@ defmodule Mix.Tasks.Research do
     research_opts = maybe_add_option(research_opts, :depth, opts[:depth])
     research_opts = maybe_add_option(research_opts, :content_length, opts[:content_length])
     
+    # Add search module configuration
+    research_opts = add_search_module_options(research_opts, opts)
+    
     # Add progress callback if verbose
     research_opts = if opts[:verbose] do
       Keyword.put(research_opts, :on_progress, &progress_callback/2)
@@ -176,6 +192,64 @@ defmodule Mix.Tasks.Research do
 
   defp maybe_add_option(list, _key, nil), do: list
   defp maybe_add_option(list, key, value), do: Keyword.put(list, key, value)
+
+  defp add_search_module_options(research_opts, opts) do
+    cond do
+      # Multiple modules specified as JSON
+      modules_json = opts[:search_modules] ->
+        parse_and_add_search_modules(research_opts, modules_json)
+      
+      # Single module specified
+      module_name = opts[:search_module] ->
+        module = get_module_atom(module_name)
+        Keyword.put(research_opts, :search_module, module)
+      
+      # No modules specified
+      true ->
+        research_opts
+    end
+  end
+  
+  defp parse_and_add_search_modules(research_opts, modules_json) do
+    case Jason.decode(modules_json) do
+      {:ok, modules} ->
+        modules = Enum.map(modules, &build_module_config/1)
+        Keyword.put(research_opts, :search_modules, modules)
+        
+      {:error, _} ->
+        Mix.raise("Invalid JSON for search_modules: #{modules_json}")
+    end
+  end
+  
+  defp build_module_config(module_config) do
+    %{
+      module: get_module_atom(module_config["module"]),
+      options: parse_module_options(module_config["options"] || %{}),
+      weight: module_config["weight"] || 1.0
+    }
+  end
+  
+  defp get_module_atom("brave"), do: Mulberry.Search.Brave
+  defp get_module_atom("reddit"), do: Mulberry.Search.Reddit
+  defp get_module_atom(module) when is_binary(module) do
+    Mix.raise("Unknown search module: #{module}. Available: brave, reddit")
+  end
+  
+  defp parse_module_options(options) when is_map(options) do
+    # Convert string keys to atoms for known Reddit options
+    Enum.reduce(options, %{}, fn {key, value}, acc ->
+      atom_key = case key do
+        "sort" -> :sort
+        "timeframe" -> :timeframe
+        "subreddit" -> :subreddit
+        "after" -> :after
+        "trim" -> :trim
+        "result_filter" -> :result_filter
+        _ -> String.to_atom(key)
+      end
+      Map.put(acc, atom_key, value)
+    end)
+  end
 
   defp build_search_options(opts) do
     search_opts = %{}

@@ -34,6 +34,12 @@ defmodule Mulberry.Research.Chain do
     field(:search_options, :map, default: %{})
     field(:retriever_options, :map, default: %{})
     
+    # Search modules configuration
+    field(:search_modules, {:array, :map}, default: [])
+    # Virtual field for backward compatibility
+    field(:search_module, :any, virtual: true)
+    field(:search_module_options, :map, virtual: true)
+    
     # Filtering and ranking
     field(:min_source_relevance, :float, default: 0.7)
     field(:include_domains, {:array, :string}, default: [])
@@ -55,6 +61,9 @@ defmodule Mulberry.Research.Chain do
           content_length: String.t(),
           search_options: map(),
           retriever_options: map(),
+          search_modules: [map()],
+          search_module: term() | nil,
+          search_module_options: map(),
           min_source_relevance: float(),
           include_domains: [String.t()],
           exclude_domains: [String.t()]
@@ -72,8 +81,12 @@ defmodule Mulberry.Research.Chain do
     :source_analysis_prompt,
     :synthesis_prompt,
     :finding_extraction_prompt,
+    :content_length,
     :search_options,
     :retriever_options,
+    :search_modules,
+    :search_module,
+    :search_module_options,
     :min_source_relevance,
     :include_domains,
     :exclude_domains
@@ -221,6 +234,36 @@ defmodule Mulberry.Research.Chain do
   def get_finding_extraction_prompt(%Chain{finding_extraction_prompt: nil}), do: @default_finding_extraction_prompt
   def get_finding_extraction_prompt(%Chain{finding_extraction_prompt: prompt}), do: prompt
 
+  @doc """
+  Gets the normalized search modules configuration from the chain.
+  
+  Handles backward compatibility by converting single search_module to modules list.
+  """
+  @spec get_search_modules(t()) :: [%{module: module(), options: map(), weight: float()}]
+  def get_search_modules(%Chain{} = chain) do
+    cond do
+      # If search_modules is populated, use it
+      chain.search_modules != [] ->
+        normalize_search_modules(chain.search_modules)
+      
+      # Backward compatibility: if search_module is set
+      chain.search_module != nil ->
+        [%{
+          module: chain.search_module,
+          options: chain.search_module_options || %{},
+          weight: 1.0
+        }]
+      
+      # Default to Brave search
+      true ->
+        [%{
+          module: Mulberry.Search.Brave,
+          options: %{},
+          weight: 1.0
+        }]
+    end
+  end
+
   # Private functions
 
   defp ensure_llm(attrs) do
@@ -244,5 +287,15 @@ defmodule Mulberry.Research.Chain do
       end)
     
     Enum.map_join(errors, "; ", fn {field, messages} -> "#{field}: #{Enum.join(messages, ", ")}" end)
+  end
+
+  defp normalize_search_modules(modules) do
+    Enum.map(modules, fn module_config ->
+      %{
+        module: Map.get(module_config, :module) || Map.get(module_config, "module"),
+        options: Map.get(module_config, :options) || Map.get(module_config, "options") || %{},
+        weight: Map.get(module_config, :weight) || Map.get(module_config, "weight") || 1.0
+      }
+    end)
   end
 end

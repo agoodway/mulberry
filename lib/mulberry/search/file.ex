@@ -9,13 +9,14 @@ defmodule Mulberry.Search.File do
   ## Examples
 
       # Basic filename search
-      File.search("README", 10, "filename")
+      File.search("README", 10, mode: "filename")
 
       # Content search
-      File.search("defmodule", 20, "content", paths: ["./lib"])
+      File.search("defmodule", 20, mode: "content", paths: ["./lib"])
 
       # Combined search with filters
-      File.search("test", 50, "combined",
+      File.search("test", 50,
+        mode: "combined",
         paths: ["./test", "./lib"],
         patterns: ["*.ex", "*.exs"],
         exclude: ["_build", "deps"]
@@ -35,9 +36,10 @@ defmodule Mulberry.Search.File do
         }
 
   @impl true
-  @spec search(String.t(), pos_integer(), String.t(), Keyword.t()) ::
+  @spec search(String.t(), pos_integer(), Keyword.t()) ::
           {:ok, map()} | {:error, String.t()}
-  def search(query, count \\ 20, mode \\ "combined", opts \\ []) do
+  def search(query, count \\ 20, opts \\ []) do
+    mode = Keyword.get(opts, :mode, "combined")
     search_paths = Keyword.get(opts, :paths, ["."])
     file_patterns = Keyword.get(opts, :patterns, ["*"])
     exclude_dirs = Keyword.get(opts, :exclude, ["_build", "deps", ".git", "node_modules"])
