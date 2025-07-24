@@ -151,7 +151,7 @@ defmodule Mulberry.Research.Chain do
 
   - `:llm` - The LLM instance to use for analysis (uses default if not provided)
   - `:strategy` - Research strategy (:web, :local, :hybrid). Default: :web
-  - `:max_sources` - Maximum number of sources to analyze. Default: 5
+  - `:max_sources` - Maximum number of sources to analyze (1-100). Default: 5
   - `:search_depth` - Depth of research (1-3). Default: 1
   - `:chunk_size` - Size of text chunks for processing. Default: 1000
   - `:chunk_overlap` - Overlap between chunks. Default: 100
@@ -173,7 +173,7 @@ defmodule Mulberry.Research.Chain do
     %Chain{}
     |> cast(attrs, @create_fields)
     |> validate_required(@required_fields)
-    |> validate_number(:max_sources, greater_than: 0, less_than_or_equal_to: 20)
+    |> validate_number(:max_sources, greater_than: 0, less_than_or_equal_to: 100)
     |> validate_number(:search_depth, greater_than: 0, less_than_or_equal_to: 3)
     |> validate_number(:chunk_size, greater_than: 0)
     |> validate_number(:chunk_overlap, greater_than_or_equal_to: 0)
