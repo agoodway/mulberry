@@ -22,13 +22,13 @@ defmodule Mulberry.Search.Reddit do
       )
       {:ok, posts} = Mulberry.Search.Reddit.to_documents(response)
 
-      # Access Reddit-specific metadata
+      # Access Reddit-specific fields
       post = List.first(posts)
-      post.type                  # => "SocialMediaPosting"
-      post.network               # => "Reddit"
-      post.meta[:subreddit]      # => "MachineLearning"
-      post.meta[:score]          # => 156
-      post.meta[:num_comments]   # => 42
+      post.subreddit             # => "MachineLearning"
+      post.score                 # => 156
+      post.num_comments          # => 42
+      post.author                # => "reddit_user"
+      post.is_self               # => true
 
   ## API Reference
 
@@ -65,11 +65,11 @@ defmodule Mulberry.Search.Reddit do
   end
 
   @impl true
-  @spec to_documents(any()) :: {:ok, [Mulberry.Document.WebPage.t()]} | {:error, atom()}
+  @spec to_documents(any()) :: {:ok, [Mulberry.Document.RedditPost.t()]} | {:error, atom()}
   def to_documents(results) do
     case results do
       %{"success" => true, "posts" => posts} when is_list(posts) ->
-        docs = Enum.map(posts, &reddit_post_to_webpage/1)
+        docs = Enum.map(posts, &reddit_post_to_document/1)
         {:ok, docs}
 
       %{"success" => true, "posts" => []} ->
@@ -85,23 +85,37 @@ defmodule Mulberry.Search.Reddit do
     end
   end
 
-  defp reddit_post_to_webpage(post) do
-    # Extract comprehensive metadata
-    meta = [
+  defp reddit_post_to_document(post) do
+    Mulberry.Document.RedditPost.new(%{
+      # Core fields
+      id: post["id"],
+      name: post["name"],
+      title: post["title"],
+      selftext: post["selftext"],
+      url: post["url"],
+      permalink: post["permalink"],
+      
+      # Metadata
       subreddit: post["subreddit"],
       subreddit_prefixed: post["subreddit_name_prefixed"],
+      subreddit_subscribers: post["subreddit_subscribers"],
       author: post["author"],
       author_fullname: post["author_fullname"],
+      
+      # Engagement metrics
       score: post["score"],
       ups: post["ups"],
       downs: post["downs"],
       upvote_ratio: post["upvote_ratio"],
       num_comments: post["num_comments"],
+      total_awards_received: post["total_awards_received"],
+      gilded: post["gilded"],
+      
+      # Timestamps
       created_utc: post["created_utc"],
       created_at_iso: post["created_at_iso"],
-      permalink: post["permalink"],
-      id: post["id"],
-      name: post["name"],
+      
+      # Flags
       is_video: post["is_video"],
       is_self: post["is_self"],
       over_18: post["over_18"],
@@ -110,29 +124,13 @@ defmodule Mulberry.Search.Reddit do
       archived: post["archived"],
       stickied: post["stickied"],
       pinned: post["pinned"],
-      gilded: post["gilded"],
-      total_awards_received: post["total_awards_received"],
-      subreddit_subscribers: post["subreddit_subscribers"],
+      
+      # Additional metadata
       link_flair_text: post["link_flair_text"],
       domain: post["domain"]
-    ]
-
-    %{
-      url: post["url"],
-      title: post["title"],
-      description: truncate_text(post["selftext"] || "", 500),
-      type: "SocialMediaPosting",
-      network: "Reddit",
-      meta: meta
-    }
-    |> Mulberry.Document.WebPage.new()
+    })
   end
 
   defp maybe_add_param(params, _key, nil), do: params
   defp maybe_add_param(params, key, value), do: Map.put(params, key, value)
-
-  defp truncate_text(text, max_length) when byte_size(text) > max_length do
-    String.slice(text, 0, max_length) <> "..."
-  end
-  defp truncate_text(text, _), do: text
 end
