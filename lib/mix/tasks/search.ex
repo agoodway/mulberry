@@ -10,6 +10,7 @@ defmodule Mix.Tasks.Search do
 
     * `brave` - Web search using Brave Search API (default)
     * `reddit` - Reddit post search using ScrapeCreators API
+    * `facebook_ads` - Facebook ads search using ScrapeCreators API
 
   ## Common Options
 
@@ -30,6 +31,15 @@ defmodule Mix.Tasks.Search do
     * `--timeframe` - Time filter: all, year, month, week, day, hour
     * `--subreddit` - Filter by specific subreddit
     * `--after` - Pagination token for next page
+    * `--trim` - Get trimmed responses (boolean)
+
+  ### Facebook Ads Search
+
+    * `--search-by` - Search by: company_name (default) or page_id
+    * `--country` - 2-letter country code (e.g., US, GB)
+    * `--status` - Ad status: ACTIVE (default), INACTIVE, or ALL
+    * `--media-type` - Media type: ALL (default), image, video, or meme
+    * `--cursor` - Pagination cursor for next page
     * `--trim` - Get trimmed responses (boolean)
 
   ## Examples
@@ -54,6 +64,15 @@ defmodule Mix.Tasks.Search do
 
       # Verbose mode with limit
       mix search brave "phoenix liveview" --verbose --limit 5
+
+      # Facebook ads search by company name
+      mix search facebook_ads "Nike"
+
+      # Facebook ads search by page ID
+      mix search facebook_ads "123456789" --search-by page_id
+
+      # Facebook ads with filters
+      mix search facebook_ads "Apple" --country US --status ACTIVE --media-type video
   """
 
   use Mix.Task
@@ -62,7 +81,8 @@ defmodule Mix.Tasks.Search do
 
   @search_modules %{
     "brave" => Mulberry.Search.Brave,
-    "reddit" => Mulberry.Search.Reddit
+    "reddit" => Mulberry.Search.Reddit,
+    "facebook_ads" => Mulberry.Search.FacebookAds
   }
 
   @impl Mix.Task
@@ -78,7 +98,12 @@ defmodule Mix.Tasks.Search do
         timeframe: :string,
         subreddit: :string,
         after: :string,
-        trim: :boolean
+        trim: :boolean,
+        search_by: :string,
+        country: :string,
+        status: :string,
+        media_type: :string,
+        cursor: :string
       ],
       aliases: [
         l: :limit,
@@ -163,10 +188,17 @@ defmodule Mix.Tasks.Search do
     end
   end
 
+  defp check_api_key("facebook_ads") do
+    unless Mulberry.config(:scrapecreators_api_key) do
+      Mix.raise("SCRAPECREATORS_API_KEY environment variable is required for Facebook Ads search")
+    end
+  end
+
   defp validate_options(opts, type) do
     opts = validate_format(opts)
     opts = validate_limit(opts)
     opts = validate_reddit_options(opts, type)
+    opts = validate_facebook_ads_options(opts, type)
     opts
   end
 
@@ -205,6 +237,42 @@ defmodule Mix.Tasks.Search do
   end
   defp validate_reddit_options(opts, _), do: opts
 
+  defp validate_facebook_ads_options(opts, "facebook_ads") do
+    opts
+    |> validate_search_by()
+    |> validate_status()
+    |> validate_media_type()
+  end
+  defp validate_facebook_ads_options(opts, _), do: opts
+  
+  defp validate_search_by(opts) do
+    case opts[:search_by] do
+      nil -> opts
+      search_by when search_by in ["company_name", "page_id"] -> 
+        Keyword.put(opts, :search_by, String.to_atom(search_by))
+      search_by ->
+        Mix.raise("Invalid search_by: #{search_by}. Must be company_name or page_id")
+    end
+  end
+  
+  defp validate_status(opts) do
+    case opts[:status] do
+      nil -> opts
+      status when status in ["ACTIVE", "INACTIVE", "ALL"] -> opts
+      status ->
+        Mix.raise("Invalid status: #{status}. Must be ACTIVE, INACTIVE, or ALL")
+    end
+  end
+  
+  defp validate_media_type(opts) do
+    case opts[:media_type] do
+      nil -> opts
+      media_type when media_type in ["ALL", "image", "video", "meme"] -> opts
+      media_type ->
+        Mix.raise("Invalid media_type: #{media_type}. Must be ALL, image, video, or meme")
+    end
+  end
+
   defp perform_search(Mulberry.Search.Brave, query, opts) do
     result_filter = opts[:result_filter] || "query,web"
     
@@ -238,6 +306,26 @@ defmodule Mix.Tasks.Search do
         Mulberry.Search.Reddit.to_documents(content)
       {:ok, response} -> 
         Mulberry.Search.Reddit.to_documents(response)
+      error -> 
+        error
+    end
+  end
+
+  defp perform_search(Mulberry.Search.FacebookAds, query, opts) do
+    # Build Facebook Ads-specific options
+    fb_opts = []
+    fb_opts = maybe_add_option(fb_opts, :search_by, opts[:search_by])
+    fb_opts = maybe_add_option(fb_opts, :country, opts[:country])
+    fb_opts = maybe_add_option(fb_opts, :status, opts[:status])
+    fb_opts = maybe_add_option(fb_opts, :media_type, opts[:media_type])
+    fb_opts = maybe_add_option(fb_opts, :cursor, opts[:cursor])
+    fb_opts = maybe_add_option(fb_opts, :trim, opts[:trim])
+    
+    case Mulberry.Search.FacebookAds.search(query, opts[:limit], fb_opts) do
+      {:ok, %Mulberry.Retriever.Response{content: content}} -> 
+        Mulberry.Search.FacebookAds.to_documents(content)
+      {:ok, response} -> 
+        Mulberry.Search.FacebookAds.to_documents(response)
       error -> 
         error
     end
@@ -292,6 +380,25 @@ defmodule Mix.Tasks.Search do
     end)
   end
 
+  defp format_text(documents, "facebook_ads") do
+    documents
+    |> Enum.with_index(1)
+    |> Enum.map_join("\n\n", fn {doc, index} ->
+      # Handle FacebookAd documents with direct field access
+      status = if doc.is_active, do: "Active", else: "Inactive"
+      platforms = format_platforms(doc.publisher_platform)
+      body = doc.body_text || "(No ad text)"
+      
+      """
+      #{index}. #{doc.page_name}
+      ───────────────────────────────────────────────────────────────────────────────
+      📢 #{status} | 📱 #{platforms} | #{if doc.cta_text, do: "🔗 " <> doc.cta_text, else: ""}
+      #{format_description(body)}
+      #{if doc.link_url, do: "🔗 " <> doc.link_url, else: ""}
+      """
+    end)
+  end
+
   defp format_text(documents, _type) do
     documents
     |> Enum.with_index(1)
@@ -338,6 +445,32 @@ defmodule Mix.Tasks.Search do
     header <> results
   end
 
+  defp format_markdown(documents, "facebook_ads") do
+    header = "# Facebook Ads Search Results\n\n"
+    
+    results = documents
+    |> Enum.with_index(1)
+    |> Enum.map_join("\n\n", fn {doc, index} ->
+      status = if doc.is_active, do: "✅ Active", else: "❌ Inactive"
+      
+      """
+      ## #{index}. #{doc.page_name}
+      
+      | Status | Platforms | CTA | Ad ID |
+      |--------|-----------|-----|-------|
+      | #{status} | #{format_platforms(doc.publisher_platform)} | #{doc.cta_text || "N/A"} | #{doc.ad_archive_id} |
+      
+      ### Ad Content
+      
+      #{doc.body_text || "_No ad text_"}
+      
+      #{if doc.link_url, do: "**[#{doc.cta_text || "View Link"}](#{doc.link_url})**", else: ""}
+      """
+    end)
+    
+    header <> results
+  end
+
   defp format_markdown(documents, _type) do
     header = "# Search Results\n\n"
     
@@ -371,6 +504,10 @@ defmodule Mix.Tasks.Search do
         "N/A"
     end
   end
+
+  defp format_platforms(nil), do: "Unknown"
+  defp format_platforms([]), do: "Unknown"
+  defp format_platforms(platforms), do: Enum.join(platforms, ", ")
 
   defp format_json(documents) do
     documents

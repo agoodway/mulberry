@@ -1,0 +1,291 @@
+defmodule Mulberry.Document.FacebookAd do
+  @moduledoc """
+  Facebook Ad document type for handling Facebook ads from the ScrapeCreators API.
+  
+  This module provides a structured representation of Facebook ads with comprehensive
+  metadata and implements the Document protocol for text processing operations.
+  """
+  
+  alias __MODULE__
+  
+  @type t :: %__MODULE__{
+          # Core fields
+          ad_archive_id: String.t(),
+          ad_id: String.t() | nil,
+          collation_id: String.t() | nil,
+          collation_count: integer() | nil,
+          
+          # Page information
+          page_id: String.t(),
+          page_name: String.t(),
+          page_is_deleted: boolean(),
+          page_profile_uri: String.t() | nil,
+          
+          # Ad content
+          body_text: String.t() | nil,
+          caption: String.t() | nil,
+          cta_text: String.t() | nil,
+          cta_type: String.t() | nil,
+          link_url: String.t() | nil,
+          link_description: String.t() | nil,
+          title: String.t() | nil,
+          byline: String.t() | nil,
+          
+          # Media
+          images: [map()] | nil,
+          videos: [map()] | nil,
+          display_format: String.t() | nil,
+          
+          # Metadata
+          categories: [String.t()],
+          entity_type: String.t() | nil,
+          publisher_platform: [String.t()],
+          currency: String.t() | nil,
+          
+          # Dates and status
+          start_date: integer() | nil,
+          end_date: integer() | nil,
+          is_active: boolean(),
+          
+          # Targeting and reach
+          targeted_or_reached_countries: [String.t()],
+          impressions_text: String.t() | nil,
+          impressions_index: integer() | nil,
+          reach_estimate: map() | nil,
+          
+          # Compliance and reporting
+          contains_sensitive_content: boolean(),
+          has_user_reported: boolean(),
+          report_count: integer() | nil,
+          is_aaa_eligible: boolean(),
+          
+          # Generated fields
+          summary: String.t() | nil,
+          keywords: [String.t()],
+          
+          # Extra metadata
+          meta: keyword()
+        }
+
+  defstruct [
+    # Core fields
+    :ad_archive_id,
+    :ad_id,
+    :collation_id,
+    :collation_count,
+    
+    # Page information
+    :page_id,
+    :page_name,
+    :page_is_deleted,
+    :page_profile_uri,
+    
+    # Ad content
+    :body_text,
+    :caption,
+    :cta_text,
+    :cta_type,
+    :link_url,
+    :link_description,
+    :title,
+    :byline,
+    
+    # Media
+    :display_format,
+    
+    # Metadata
+    :entity_type,
+    :currency,
+    
+    # Dates and status
+    :start_date,
+    :end_date,
+    :is_active,
+    
+    # Targeting and reach
+    :impressions_text,
+    :impressions_index,
+    :reach_estimate,
+    
+    # Compliance and reporting
+    :contains_sensitive_content,
+    :has_user_reported,
+    :report_count,
+    :is_aaa_eligible,
+    
+    # Generated fields
+    :summary,
+    
+    # Fields with defaults (must come last)
+    images: [],
+    videos: [],
+    categories: [],
+    publisher_platform: [],
+    targeted_or_reached_countries: [],
+    keywords: [],
+    meta: []
+  ]
+
+  @doc """
+  Creates a new FacebookAd document struct with the given attributes.
+  """
+  @spec new(map()) :: t()
+  def new(attrs) when is_map(attrs) do
+    struct!(FacebookAd, attrs)
+  end
+
+  defimpl Mulberry.Document do
+    alias Mulberry.Text
+    
+    @spec load(FacebookAd.t(), keyword()) :: {:ok, FacebookAd.t()} | {:error, any(), FacebookAd.t()}
+    def load(%FacebookAd{} = ad, _opts) do
+      # Facebook ads come pre-loaded from the search API
+      # No additional loading is needed
+      {:ok, ad}
+    end
+    
+    @spec generate_summary(FacebookAd.t(), keyword()) :: {:ok, FacebookAd.t()} | {:error, any(), FacebookAd.t()}
+    def generate_summary(%FacebookAd{} = ad, opts) do
+      content = get_content_for_summary(ad)
+      
+      case Text.summarize(content, opts) do
+        {:ok, summary} ->
+          {:ok, %{ad | summary: summary}}
+          
+        {:error, error} ->
+          {:error, error, ad}
+      end
+    end
+    
+    @spec generate_keywords(FacebookAd.t(), keyword()) :: {:ok, FacebookAd.t()} | {:error, any(), FacebookAd.t()}
+    def generate_keywords(%FacebookAd{} = ad, _opts) do
+      # For now, return empty keywords
+      # This could be enhanced with keyword extraction from ad content
+      {:ok, %{ad | keywords: []}}
+    end
+    
+    @spec generate_title(FacebookAd.t(), keyword()) :: {:ok, FacebookAd.t()} | {:error, any(), FacebookAd.t()}
+    def generate_title(%FacebookAd{} = ad, _opts) do
+      # Facebook ads may already have titles or we can generate from content
+      if ad.title do
+        {:ok, ad}
+      else
+        # Generate title from page name and ad content
+        title = generate_ad_title(ad)
+        {:ok, %{ad | title: title}}
+      end
+    end
+    
+    @spec to_text(FacebookAd.t(), keyword()) :: {:ok, String.t()} | {:error, any()}
+    def to_text(%FacebookAd{} = ad, _opts) do
+      text = build_text_representation(ad)
+      {:ok, text}
+    end
+    
+    @spec to_tokens(FacebookAd.t(), keyword()) :: {:ok, [String.t()]} | {:error, any()}
+    def to_tokens(%FacebookAd{} = ad, opts) do
+      case to_text(ad, opts) do
+        {:ok, text} ->
+          case Text.tokens(text) do
+            {:ok, tokens} -> {:ok, tokens}
+            _ -> {:error, :tokenization_failed}
+          end
+        _ -> 
+          {:error, :tokenization_failed}
+      end
+    end
+    
+    @spec to_chunks(FacebookAd.t(), keyword()) :: {:ok, [TextChunker.Chunk.t()]} | {:error, any()}
+    def to_chunks(%FacebookAd{} = ad, opts) do
+      case to_text(ad, opts) do
+        {:ok, text} ->
+          chunks = Text.split(text)
+          {:ok, chunks}
+        error -> 
+          error
+      end
+    end
+    
+    # Private helper functions
+    
+    defp get_content_for_summary(%FacebookAd{} = ad) do
+      parts = [
+        if(ad.page_name, do: "Advertiser: #{ad.page_name}", else: nil),
+        if(ad.title, do: "Title: #{ad.title}", else: nil),
+        if(ad.body_text, do: "Content: #{ad.body_text}", else: nil),
+        if(ad.link_description, do: "Description: #{ad.link_description}", else: nil),
+        if(ad.cta_text, do: "Call to Action: #{ad.cta_text}", else: nil)
+      ]
+      
+      parts
+      |> Enum.filter(& &1)
+      |> Enum.join("\n\n")
+    end
+    
+    defp generate_ad_title(%FacebookAd{page_name: page_name, body_text: body_text}) 
+         when is_binary(page_name) and is_binary(body_text) do
+      # Take first sentence or first 50 chars of body text
+      preview = body_text
+                |> String.split(~r/[.!?]/, parts: 2)
+                |> List.first()
+                |> String.slice(0, 50)
+      
+      "#{page_name}: #{preview}"
+    end
+    
+    defp generate_ad_title(%FacebookAd{page_name: page_name}) when is_binary(page_name) do
+      "Ad by #{page_name}"
+    end
+    
+    defp generate_ad_title(_), do: "Facebook Ad"
+    
+    defp build_text_representation(%FacebookAd{} = ad) do
+      parts = [
+        "=== Facebook Ad ===",
+        format_advertiser(ad),
+        format_title(ad),
+        format_body_text(ad),
+        format_link_description(ad),
+        format_cta(ad),
+        format_link(ad),
+        "\nPlatforms: #{format_platforms(ad.publisher_platform)}",
+        "Status: #{if ad.is_active, do: "Active", else: "Inactive"}",
+        format_impressions(ad),
+        format_countries(ad)
+      ]
+      
+      parts
+      |> Enum.filter(& &1)
+      |> Enum.join("\n")
+    end
+    
+    defp format_advertiser(%{page_name: name}) when is_binary(name), do: "Advertiser: #{name}"
+    defp format_advertiser(_), do: nil
+    
+    defp format_title(%{title: title}) when is_binary(title), do: "Title: #{title}"
+    defp format_title(_), do: nil
+    
+    defp format_body_text(%{body_text: text}) when is_binary(text) and text != "", do: "\n#{text}"
+    defp format_body_text(_), do: nil
+    
+    defp format_link_description(%{link_description: desc}) when is_binary(desc), do: "\nDescription: #{desc}"
+    defp format_link_description(_), do: nil
+    
+    defp format_cta(%{cta_text: text, cta_type: type}) when is_binary(text), do: "\nCall to Action: #{text} (#{type})"
+    defp format_cta(_), do: nil
+    
+    defp format_link(%{link_url: url}) when is_binary(url), do: "\nLink: #{url}"
+    defp format_link(_), do: nil
+    
+    defp format_impressions(%{impressions_text: text}) when is_binary(text), do: "Impressions: #{text}"
+    defp format_impressions(_), do: nil
+    
+    defp format_countries(%{targeted_or_reached_countries: countries}) when is_list(countries) and countries != [], 
+      do: "Countries: #{Enum.join(countries, ", ")}"
+    defp format_countries(_), do: nil
+    
+    defp format_platforms(nil), do: "Unknown"
+    defp format_platforms([]), do: "Unknown"
+    defp format_platforms(platforms), do: Enum.join(platforms, ", ")
+  end
+end
