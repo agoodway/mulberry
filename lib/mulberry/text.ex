@@ -1,5 +1,11 @@
 defmodule Mulberry.Text do
-  @moduledoc false
+  @moduledoc """
+  Provides text processing functionality including splitting, tokenization, summarization, 
+  title generation, and classification using language models.
+  
+  This module offers various text manipulation and analysis functions that leverage
+  AI capabilities through configurable language model providers.
+  """
 
   alias Mulberry.LangChain.Config
   alias Mulberry.Chains.TextToTitleChain
@@ -193,5 +199,89 @@ defmodule Mulberry.Text do
     chain_attrs
     |> TextToTitleChain.new!()
     |> TextToTitleChain.evaluate()
+  end
+
+  @doc """
+  Classifies text into one of the provided categories using a language model.
+
+  ## Options
+    * `:categories` - List of categories to classify into (required)
+    * `:provider` - The LLM provider to use (e.g., :openai, :anthropic, :google)
+    * `:model` - Override the default model for the provider
+    * `:temperature` - Override the temperature setting
+    * `:max_tokens` - Override the max tokens setting
+    * `:api_key` - Override the API key
+    * `:system_message` - Custom system message to override the default
+    * `:additional_messages` - Additional messages to include in the conversation
+    * `:llm` - A pre-configured LLM instance (for backward compatibility)
+    * `:verbose` - Enable verbose logging for debugging (default: false)
+    * `:examples` - List of {text, category} tuples to guide classification
+    * `:fallback_category` - Category to use if classification fails
+
+  ## Examples
+
+      # Basic classification
+      {:ok, category} = Mulberry.Text.classify("The new iPhone features...", 
+        categories: ["Technology", "Business", "Health"])
+      
+      # With examples for few-shot learning
+      {:ok, category} = Mulberry.Text.classify("Quarterly earnings report...", 
+        categories: ["Technology", "Business", "Health"],
+        examples: [
+          {"Stock market update", "Business"}, 
+          {"New CPU released", "Technology"}
+        ])
+      
+      # With fallback category
+      {:ok, category} = Mulberry.Text.classify("Some ambiguous text", 
+        categories: ["A", "B", "C"],
+        fallback_category: "Unknown")
+  """
+  @spec classify(String.t(), Keyword.t()) :: {:ok, String.t()} | {:error, any()}
+  def classify(text, opts \\ []) do
+    alias Mulberry.Chains.TextClassificationChain
+
+    # Ensure categories are provided
+    categories = Keyword.get(opts, :categories, [])
+    if categories == [] do
+      raise ArgumentError, "You must provide :categories option with at least 2 categories"
+    end
+
+    # Backward compatibility: check if :llm is provided
+    llm =
+      case Keyword.get(opts, :llm) do
+        nil ->
+          # Use new configuration system
+          case Config.get_llm(:classify, opts) do
+            {:ok, llm} -> llm
+            {:error, reason} -> raise "Failed to create LLM: #{inspect(reason)}"
+          end
+
+        llm ->
+          # Use provided LLM instance for backward compatibility
+          llm
+      end
+
+    # Build chain attributes
+    chain_attrs = %{
+      llm: llm,
+      input_text: text,
+      categories: categories,
+      verbose: Keyword.get(opts, :verbose, false),
+      examples: Keyword.get(opts, :examples, []),
+      fallback_category: Keyword.get(opts, :fallback_category),
+      additional_messages: Keyword.get(opts, :additional_messages, [])
+    }
+    
+    # Handle custom system message if provided
+    chain_attrs = if system_message = Keyword.get(opts, :system_message) do
+      Map.put(chain_attrs, :override_system_prompt, system_message)
+    else
+      chain_attrs
+    end
+
+    chain_attrs
+    |> TextClassificationChain.new!()
+    |> TextClassificationChain.evaluate()
   end
 end

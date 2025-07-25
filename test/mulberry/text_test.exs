@@ -462,4 +462,185 @@ defmodule Mulberry.TextTest do
       assert {:ok, "Google Title"} = Text.title(text, provider: :google)
     end
   end
+
+  describe "classify/2" do
+    test "classifies text with required categories" do
+      text = "The new iPhone 15 features an improved camera and faster processor."
+      categories = ["Technology", "Business", "Health", "Sports"]
+
+      expect(Config, :get_llm, fn :classify, _opts ->
+        {:ok, %ChatOpenAI{}}
+      end)
+
+      expect(LLMChain, :new!, fn _ -> %LLMChain{} end)
+
+      expect(LLMChain, :add_messages, fn %LLMChain{}, messages ->
+        assert length(messages) == 2
+        assert hd(messages).role == :system
+        system_message = hd(messages).content
+        assert system_message =~ "Technology"
+        assert system_message =~ "Business"
+        assert system_message =~ "Health"
+        assert system_message =~ "Sports"
+        %LLMChain{messages: messages}
+      end)
+
+      expect(LLMChain, :run, fn chain, _opts ->
+        {:ok, chain, %Message{role: :assistant, content: "Technology"}}
+      end)
+
+      assert {:ok, "Technology"} = Text.classify(text, categories: categories)
+    end
+
+    test "raises error when categories not provided" do
+      text = "Some text to classify"
+
+      assert_raise ArgumentError, ~r/You must provide :categories option/, fn ->
+        Text.classify(text)
+      end
+    end
+
+    test "uses fallback category when LLM returns invalid category" do
+      text = "Some ambiguous text"
+      categories = ["A", "B", "C"]
+
+      expect(Config, :get_llm, fn :classify, _opts ->
+        {:ok, %ChatOpenAI{}}
+      end)
+
+      expect(LLMChain, :new!, fn _ -> %LLMChain{} end)
+      expect(LLMChain, :add_messages, fn chain, _ -> chain end)
+
+      expect(LLMChain, :run, fn chain, _opts ->
+        {:ok, chain, %{content: "InvalidCategory"}}
+      end)
+
+      assert {:ok, "Unknown"} = Text.classify(text, 
+        categories: categories, 
+        fallback_category: "Unknown"
+      )
+    end
+
+    test "uses examples for few-shot learning" do
+      text = "Q3 earnings report shows 20% growth"
+      categories = ["Technology", "Business", "Health"]
+      examples = [
+        {"New smartphone released", "Technology"},
+        {"Company reports record profits", "Business"},
+        {"Study shows benefits of exercise", "Health"}
+      ]
+
+      expect(Config, :get_llm, fn :classify, _opts ->
+        {:ok, %ChatOpenAI{}}
+      end)
+
+      expect(LLMChain, :new!, fn _ -> %LLMChain{} end)
+
+      expect(LLMChain, :add_messages, fn %LLMChain{}, messages ->
+        system_message = hd(messages).content
+        # Check that examples are included in the prompt
+        assert system_message =~ "New smartphone released"
+        assert system_message =~ "Company reports record profits"
+        %LLMChain{messages: messages}
+      end)
+
+      expect(LLMChain, :run, fn chain, _opts ->
+        {:ok, chain, %{content: "Business"}}
+      end)
+
+      assert {:ok, "Business"} = Text.classify(text, 
+        categories: categories,
+        examples: examples
+      )
+    end
+
+    test "uses custom system message" do
+      text = "Text to classify"
+      categories = ["A", "B"]
+      custom_message = "You are a specialized classifier. Only respond with A or B."
+
+      expect(Config, :get_llm, fn :classify, _opts ->
+        {:ok, %ChatOpenAI{}}
+      end)
+
+      expect(LLMChain, :new!, fn _ -> %LLMChain{} end)
+
+      expect(LLMChain, :add_messages, fn %LLMChain{}, messages ->
+        system_message = hd(messages).content
+        assert system_message == custom_message
+        %LLMChain{messages: messages}
+      end)
+
+      expect(LLMChain, :run, fn chain, _opts ->
+        {:ok, chain, %{content: "A"}}
+      end)
+
+      assert {:ok, "A"} = Text.classify(text, 
+        categories: categories,
+        system_message: custom_message
+      )
+    end
+
+    test "handles classification errors with fallback" do
+      text = "Text to classify"
+      categories = ["A", "B", "C"]
+
+      expect(Config, :get_llm, fn :classify, _opts ->
+        {:ok, %ChatOpenAI{}}
+      end)
+
+      expect(LLMChain, :new!, fn _ -> %LLMChain{} end)
+      expect(LLMChain, :add_messages, fn chain, _ -> chain end)
+
+      expect(LLMChain, :run, fn _chain, _opts ->
+        {:error, nil, "API error"}
+      end)
+
+      assert {:ok, "Uncategorized"} = Text.classify(text, 
+        categories: categories,
+        fallback_category: "Uncategorized"
+      )
+    end
+
+    test "works with legacy llm option" do
+      text = "Technology news"
+      categories = ["Tech", "Business"]
+      custom_llm = %ChatOpenAI{model: "gpt-4"}
+
+      expect(LLMChain, :new!, fn %{llm: ^custom_llm} -> %LLMChain{} end)
+      expect(LLMChain, :add_messages, fn chain, _ -> chain end)
+
+      expect(LLMChain, :run, fn chain, _opts ->
+        {:ok, chain, %{content: "Tech"}}
+      end)
+
+      assert {:ok, "Tech"} = Text.classify(text, 
+        categories: categories,
+        llm: custom_llm
+      )
+    end
+
+    test "enables verbose logging" do
+      text = "Text to classify"
+      categories = ["A", "B"]
+
+      expect(Config, :get_llm, fn :classify, _opts ->
+        {:ok, %ChatOpenAI{}}
+      end)
+
+      expect(LLMChain, :new!, fn %{verbose: true} -> %LLMChain{} end)
+      expect(LLMChain, :add_messages, fn chain, _ -> chain end)
+
+      expect(LLMChain, :run, fn chain, _opts ->
+        {:ok, chain, %{content: "A"}}
+      end)
+
+      ExUnit.CaptureLog.capture_log(fn ->
+        assert {:ok, "A"} = Text.classify(text, 
+          categories: categories,
+          verbose: true
+        )
+      end) =~ "TextClassificationChain evaluating"
+    end
+  end
 end
