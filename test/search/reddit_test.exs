@@ -3,7 +3,6 @@ defmodule Mulberry.Search.RedditTest do
   use Mimic
 
   alias Mulberry.Search.Reddit
-  alias Mulberry.Document.WebPage
   alias Mulberry.Retriever
   alias Mulberry.Retriever.Response
 
@@ -62,7 +61,7 @@ defmodule Mulberry.Search.RedditTest do
   end
 
   describe "to_documents/1" do
-    test "converts successful response with posts to WebPage documents" do
+    test "converts successful response with posts to RedditPost documents" do
       reddit_response = %{
         "success" => true,
         "posts" => [
@@ -103,19 +102,17 @@ defmodule Mulberry.Search.RedditTest do
 
       {:ok, [doc]} = Reddit.to_documents(reddit_response)
       
-      assert %WebPage{} = doc
+      assert %Mulberry.Document.RedditPost{} = doc
       assert doc.url == "https://www.reddit.com/r/elixir/comments/test"
       assert doc.title == "Test Post"
-      assert doc.description == "This is a test post content"
-      assert doc.type == "SocialMediaPosting"
-      assert doc.network == "Reddit"
+      assert doc.selftext == "This is a test post content"
       
-      # Check metadata
-      assert doc.meta[:subreddit] == "elixir"
-      assert doc.meta[:author] == "test_user"
-      assert doc.meta[:score] == 42
-      assert doc.meta[:num_comments] == 10
-      assert doc.meta[:upvote_ratio] == 0.94
+      # Check direct fields instead of metadata
+      assert doc.subreddit == "elixir"
+      assert doc.author == "test_user"
+      assert doc.score == 42
+      assert doc.num_comments == 10
+      assert doc.upvote_ratio == 0.94
     end
 
     test "handles empty results" do
@@ -123,7 +120,7 @@ defmodule Mulberry.Search.RedditTest do
       assert {:ok, []} = Reddit.to_documents(reddit_response)
     end
 
-    test "truncates long selftext in description" do
+    test "preserves full selftext" do
       long_text = String.duplicate("a", 600)
       reddit_response = %{
         "success" => true,
@@ -148,8 +145,8 @@ defmodule Mulberry.Search.RedditTest do
       }
 
       {:ok, [doc]} = Reddit.to_documents(reddit_response)
-      assert String.length(doc.description) == 503 # 500 chars + "..."
-      assert String.ends_with?(doc.description, "...")
+      assert doc.selftext == long_text
+      assert String.length(doc.selftext) == 600
     end
 
     test "handles nil selftext" do
@@ -176,7 +173,7 @@ defmodule Mulberry.Search.RedditTest do
       }
 
       {:ok, [doc]} = Reddit.to_documents(reddit_response)
-      assert doc.description == ""
+      assert doc.selftext == nil
     end
 
     test "handles API error response" do
