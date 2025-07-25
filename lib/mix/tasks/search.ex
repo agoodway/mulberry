@@ -9,6 +9,7 @@ defmodule Mix.Tasks.Search do
   ## Search Types
 
     * `brave` - Web search using Brave Search API (default)
+    * `google` - Google search using ScrapeCreators API
     * `reddit` - Reddit post search using ScrapeCreators API
     * `facebook_ads` - Facebook ads search using ScrapeCreators API
 
@@ -24,6 +25,10 @@ defmodule Mix.Tasks.Search do
   ### Brave Search
 
     * `--result-filter` - Filter results, e.g., "query,web" (default: "query,web")
+
+  ### Google Search
+
+    * `--region` - 2 letter country code, e.g., US, UK, CA (optional)
 
   ### Reddit Search
 
@@ -49,6 +54,12 @@ defmodule Mix.Tasks.Search do
 
       # Explicit Brave search
       mix search brave "phoenix framework"
+
+      # Google search
+      mix search google "machine learning"
+
+      # Google search with region
+      mix search google "local news" --region UK
 
       # Reddit search
       mix search reddit "machine learning"
@@ -81,6 +92,7 @@ defmodule Mix.Tasks.Search do
 
   @search_modules %{
     "brave" => Mulberry.Search.Brave,
+    "google" => Mulberry.Search.Google,
     "reddit" => Mulberry.Search.Reddit,
     "facebook_ads" => Mulberry.Search.FacebookAds
   }
@@ -94,6 +106,7 @@ defmodule Mix.Tasks.Search do
         save: :string,
         verbose: :boolean,
         result_filter: :string,
+        region: :string,
         sort: :string,
         timeframe: :string,
         subreddit: :string,
@@ -179,6 +192,12 @@ defmodule Mix.Tasks.Search do
   defp check_api_key("brave") do
     unless Mulberry.config(:brave_api_key) do
       Mix.raise("BRAVE_API_KEY environment variable is required for Brave search")
+    end
+  end
+
+  defp check_api_key("google") do
+    unless Mulberry.config(:scrapecreators_api_key) do
+      Mix.raise("SCRAPECREATORS_API_KEY environment variable is required for Google search")
     end
   end
 
@@ -281,6 +300,21 @@ defmodule Mix.Tasks.Search do
         Mulberry.Search.Brave.to_documents(content)
       {:ok, response} -> 
         Mulberry.Search.Brave.to_documents(response)
+      error -> 
+        error
+    end
+  end
+
+  defp perform_search(Mulberry.Search.Google, query, opts) do
+    # Build Google-specific options
+    google_opts = []
+    google_opts = maybe_add_option(google_opts, :region, opts[:region])
+    
+    case Mulberry.Search.Google.search(query, opts[:limit], google_opts) do
+      {:ok, %Mulberry.Retriever.Response{content: content}} -> 
+        Mulberry.Search.Google.to_documents(content)
+      {:ok, response} -> 
+        Mulberry.Search.Google.to_documents(response)
       error -> 
         error
     end
