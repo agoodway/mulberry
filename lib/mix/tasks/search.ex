@@ -275,16 +275,18 @@ defmodule Mix.Tasks.Search do
     documents
     |> Enum.with_index(1)
     |> Enum.map_join("\n\n", fn {doc, index} ->
-      score = doc.meta[:score] || 0
-      author = doc.meta[:author] || "unknown"
-      subreddit = doc.meta[:subreddit] || "unknown"
-      comments = doc.meta[:num_comments] || 0
+      # Handle RedditPost documents with direct field access
+      score = Map.get(doc, :score, 0)
+      author = Map.get(doc, :author, "unknown")
+      subreddit = Map.get(doc, :subreddit, "unknown")
+      comments = Map.get(doc, :num_comments, 0)
+      selftext = Map.get(doc, :selftext, "")
       
       """
       #{index}. #{doc.title}
       ───────────────────────────────────────────────────────────────────────────────
       📍 r/#{subreddit} | 👤 #{author} | ⬆️ #{score} | 💬 #{comments}
-      #{format_description(doc.description)}
+      #{format_description(selftext)}
       🔗 #{doc.url}
       """
     end)
