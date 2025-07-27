@@ -114,15 +114,15 @@ defmodule MulberryTest do
         %{title: "Result 2", url: "http://example2.com"}
       ]
 
-      expect(module, :search, fn ^query, ^limit -> mock_results end)
+      expect(module, :search, fn ^query, ^limit -> {:ok, mock_results} end)
       expect(module, :to_documents, fn ^mock_results -> 
-        [
+        {:ok, [
           %WebPage{url: "http://example1.com", title: "Result 1"},
           %WebPage{url: "http://example2.com", title: "Result 2"}
-        ]
+        ]}
       end)
 
-      results = Mulberry.search(module, query, limit)
+      {:ok, results} = Mulberry.search(module, query, limit)
       assert length(results) == 2
       assert hd(results).url == "http://example1.com"
     end
@@ -131,10 +131,11 @@ defmodule MulberryTest do
       module = Mulberry.Search.Brave
       query = "test query"
 
-      expect(module, :search, fn ^query, 3 -> [] end)
-      expect(module, :to_documents, fn [] -> [] end)
+      expect(module, :search, fn ^query, 3 -> {:ok, []} end)
+      expect(module, :to_documents, fn [] -> {:ok, []} end)
 
-      Mulberry.search(module, query)
+      {:ok, results} = Mulberry.search(module, query)
+      assert results == []
     end
   end
 

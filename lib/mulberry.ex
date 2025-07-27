@@ -77,11 +77,14 @@ defmodule Mulberry do
   @doc """
   Searches using the specified module and returns documents matching the query.
   """
-  @spec search(module(), String.t(), pos_integer()) :: [any()]
+  @spec search(module(), String.t(), pos_integer()) :: {:ok, [any()]} | {:error, any()}
   def search(module, query, limit \\ 3) do
-    query
-    |> module.search(limit)
-    |> module.to_documents()
+    with {:ok, results} <- module.search(query, limit),
+         {:ok, documents} <- module.to_documents(results) do
+      {:ok, documents}
+    else
+      {:error, _} = error -> error
+    end
   end
 
   @doc """

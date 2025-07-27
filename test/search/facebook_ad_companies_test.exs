@@ -183,10 +183,8 @@ defmodule Mulberry.Search.FacebookAdCompaniesTest do
 
       Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
       
-      # The high-level search function chains search and to_documents
-      # We need to return the result in a format that to_documents expects
-      {:ok, result} = FacebookAdCompanies.search("Example", 10)
-      {:ok, companies} = FacebookAdCompanies.to_documents(result)
+      # The high-level search function now properly handles the tuple returns
+      {:ok, companies} = Mulberry.search(FacebookAdCompanies, "Example", 10)
       
       assert length(companies) == 1
       [company] = companies
