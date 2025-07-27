@@ -12,6 +12,8 @@ defmodule Mix.Tasks.Search do
     * `google` - Google search using ScrapeCreators API
     * `reddit` - Reddit post search using ScrapeCreators API
     * `facebook_ads` - Facebook ads search using ScrapeCreators API
+    * `facebook_ad_companies` - Facebook ad companies search using ScrapeCreators API
+    * `google_ads` - Google ads search using ScrapeCreators API
     * `youtube` - YouTube search using ScrapeCreators API
 
   ## Common Options
@@ -47,6 +49,17 @@ defmodule Mix.Tasks.Search do
     * `--media-type` - Media type: ALL (default), image, video, or meme
     * `--cursor` - Pagination cursor for next page
     * `--trim` - Get trimmed responses (boolean)
+
+  ### Facebook Ad Companies Search
+
+    * `--cursor` - Pagination cursor for next page
+
+  ### Google Ads Search
+
+    * `--advertiser-id` - Search by advertiser ID instead of domain
+    * `--topic` - Topic filter: political, etc. (requires --region for political)
+    * `--region` - Region filter (e.g., US, UK, CA)
+    * `--cursor` - Pagination cursor for next page
 
   ### YouTube Search
 
@@ -98,6 +111,18 @@ defmodule Mix.Tasks.Search do
 
       # Facebook ads with filters
       mix search facebook_ads "Apple" --country US --status ACTIVE --media-type video
+
+      # Facebook ad companies search
+      mix search facebook_ad_companies "Nike"
+
+      # Google ads search by domain
+      mix search google_ads "nike.com"
+
+      # Google ads search by advertiser ID
+      mix search google_ads --advertiser-id "AR01614014350098432001"
+
+      # Google ads search with filters
+      mix search google_ads "example.com" --topic political --region US
   """
 
   use Mix.Task
@@ -109,6 +134,8 @@ defmodule Mix.Tasks.Search do
     "google" => Mulberry.Search.Google,
     "reddit" => Mulberry.Search.Reddit,
     "facebook_ads" => Mulberry.Search.FacebookAds,
+    "facebook_ad_companies" => Mulberry.Search.FacebookAdCompanies,
+    "google_ads" => Mulberry.Search.GoogleAds,
     "youtube" => Mulberry.Search.YouTube
   }
 
@@ -136,7 +163,9 @@ defmodule Mix.Tasks.Search do
           upload_date: :string,
           sort_by: :string,
           filter: :string,
-          continuation_token: :string
+          continuation_token: :string,
+          advertiser_id: :string,
+          topic: :string
         ],
         aliases: [
           l: :limit,
@@ -202,8 +231,17 @@ defmodule Mix.Tasks.Search do
   defp get_search_module(type) do
     case Map.get(@search_modules, type) do
       nil ->
-        available = Map.keys(@search_modules) |> Enum.join(", ")
-        Mix.raise("Invalid search type: #{type}. Available types: #{available}")
+        available = Map.keys(@search_modules) |> Enum.sort() |> Enum.join(", ")
+        Mix.raise("""
+        Invalid search type: '#{type}'
+        
+        Available search types:
+          #{available}
+        
+        Usage: mix search [TYPE] QUERY [options]
+        
+        For more help: mix help search
+        """)
 
       module ->
         module
@@ -237,6 +275,18 @@ defmodule Mix.Tasks.Search do
   defp check_api_key("youtube") do
     unless Mulberry.config(:scrapecreators_api_key) do
       Mix.raise("SCRAPECREATORS_API_KEY environment variable is required for YouTube search")
+    end
+  end
+
+  defp check_api_key("facebook_ad_companies") do
+    unless Mulberry.config(:scrapecreators_api_key) do
+      Mix.raise("SCRAPECREATORS_API_KEY environment variable is required for Facebook Ad Companies search")
+    end
+  end
+
+  defp check_api_key("google_ads") do
+    unless Mulberry.config(:scrapecreators_api_key) do
+      Mix.raise("SCRAPECREATORS_API_KEY environment variable is required for Google Ads search")
     end
   end
 
@@ -401,9 +451,11 @@ defmodule Mix.Tasks.Search do
   end
 
   defp perform_search(Mulberry.Search.Brave, query, opts) do
-    result_filter = opts[:result_filter] || "query,web"
+    # Build Brave-specific options
+    brave_opts = []
+    brave_opts = maybe_add_option(brave_opts, :result_filter, opts[:result_filter] || "query,web")
 
-    case Mulberry.Search.Brave.search(query, opts[:limit], result_filter) do
+    case Mulberry.Search.Brave.search(query, opts[:limit], brave_opts) do
       {:ok, %Mulberry.Retriever.Response{content: content}} ->
         Mulberry.Search.Brave.to_documents(content)
 
@@ -502,6 +554,46 @@ defmodule Mix.Tasks.Search do
     end
   end
 
+  defp perform_search(Mulberry.Search.FacebookAdCompanies, query, opts) do
+    # Build Facebook Ad Companies-specific options
+    fb_companies_opts = []
+    fb_companies_opts = maybe_add_option(fb_companies_opts, :cursor, opts[:cursor])
+
+    case Mulberry.Search.FacebookAdCompanies.search(query, opts[:limit], fb_companies_opts) do
+      {:ok, %Mulberry.Retriever.Response{content: content}} ->
+        Mulberry.Search.FacebookAdCompanies.to_documents(content)
+
+      {:ok, response} ->
+        Mulberry.Search.FacebookAdCompanies.to_documents(response)
+
+      error ->
+        error
+    end
+  end
+
+  defp perform_search(Mulberry.Search.GoogleAds, query, opts) do
+    # Build Google Ads-specific options
+    google_ads_opts = []
+    google_ads_opts = maybe_add_option(google_ads_opts, :advertiser_id, opts[:advertiser_id])
+    google_ads_opts = maybe_add_option(google_ads_opts, :topic, opts[:topic])
+    google_ads_opts = maybe_add_option(google_ads_opts, :region, opts[:region])
+    google_ads_opts = maybe_add_option(google_ads_opts, :cursor, opts[:cursor])
+
+    # If advertiser_id is provided, use nil for domain query
+    query = if opts[:advertiser_id], do: nil, else: query
+
+    case Mulberry.Search.GoogleAds.search(query, opts[:limit], google_ads_opts) do
+      {:ok, %Mulberry.Retriever.Response{content: content}} ->
+        Mulberry.Search.GoogleAds.to_documents(content)
+
+      {:ok, response} ->
+        Mulberry.Search.GoogleAds.to_documents(response)
+
+      error ->
+        error
+    end
+  end
+
   defp maybe_add_option(list, _key, nil), do: list
   defp maybe_add_option(list, key, value), do: Keyword.put(list, key, value)
 
@@ -588,6 +680,40 @@ defmodule Mix.Tasks.Search do
       📢 #{status} | 📱 #{platforms} | #{if doc.cta_text, do: "🔗 " <> doc.cta_text, else: ""}
       #{format_description(body)}
       #{if doc.link_url, do: "🔗 " <> doc.link_url, else: ""}
+      """
+    end)
+  end
+
+  defp format_text(documents, "facebook_ad_companies") do
+    documents
+    |> Enum.with_index(1)
+    |> Enum.map_join("\n\n", fn {doc, index} ->
+      verification = if doc.verification, do: " ✓ #{doc.verification}", else: ""
+      likes = if doc.likes, do: "👍 #{format_number(doc.likes)} likes", else: ""
+      ig_info = if doc.ig_username, do: " | 📸 @#{doc.ig_username} (#{format_number(doc.ig_followers || 0)} followers)", else: ""
+      
+      """
+      #{index}. #{doc.name}#{verification}
+      ───────────────────────────────────────────────────────────────────────────────
+      📂 #{doc.category || "N/A"} | #{likes}#{ig_info}
+      📍 #{doc.country || "Unknown location"}
+      Page ID: #{doc.page_id}
+      """
+    end)
+  end
+
+  defp format_text(documents, "google_ads") do
+    documents
+    |> Enum.with_index(1)
+    |> Enum.map_join("\n\n", fn {doc, index} ->
+      date_range = format_date_range(doc.first_shown, doc.last_shown)
+      
+      """
+      #{index}. #{doc.advertiser_name || "Unknown Advertiser"}
+      ───────────────────────────────────────────────────────────────────────────────
+      📱 Format: #{doc.format || "N/A"} | 🌐 Domain: #{doc.domain || "N/A"}
+      📅 #{date_range}
+      🔗 #{doc.ad_url || "No URL available"}
       """
     end)
   end
@@ -828,6 +954,23 @@ defmodule Mix.Tasks.Search do
   defp format_platforms(nil), do: "Unknown"
   defp format_platforms([]), do: "Unknown"
   defp format_platforms(platforms), do: Enum.join(platforms, ", ")
+
+  defp format_number(nil), do: "0"
+  defp format_number(num) when is_integer(num) do
+    num
+    |> Integer.to_string()
+    |> String.graphemes()
+    |> Enum.reverse()
+    |> Enum.chunk_every(3)
+    |> Enum.join(",")
+    |> String.reverse()
+  end
+  defp format_number(num), do: to_string(num)
+
+  defp format_date_range(nil, nil), do: "Date range unknown"
+  defp format_date_range(first, nil), do: "First shown: #{first}"
+  defp format_date_range(nil, last), do: "Last shown: #{last}"
+  defp format_date_range(first, last), do: "#{first} → #{last}"
 
   defp format_json(documents) do
     documents

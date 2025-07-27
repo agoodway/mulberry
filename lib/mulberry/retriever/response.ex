@@ -16,5 +16,8 @@ defmodule Mulberry.Retriever.Response do
   def default_responder(%Mulberry.Retriever.Response{status: :failed} = response),
     do: {:error, response}
 
+  def default_responder(%Mulberry.Retriever.Response{status: :rate_limited} = response),
+    do: {:error, response}
+
   def default_responder(response), do: {:ok, response}
 end
