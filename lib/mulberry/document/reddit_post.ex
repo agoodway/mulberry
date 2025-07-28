@@ -119,6 +119,7 @@ defmodule Mulberry.Document.RedditPost do
   end
 
   defimpl Mulberry.Document do
+    alias Mulberry.DocumentTransformer
     alias Mulberry.Text
     
     @spec load(RedditPost.t(), keyword()) :: {:ok, RedditPost.t()} | {:error, any(), RedditPost.t()}
@@ -128,30 +129,27 @@ defmodule Mulberry.Document.RedditPost do
       {:ok, post}
     end
     
+    # Transform function - new unified interface
+    @spec transform(RedditPost.t(), atom(), keyword()) :: {:ok, RedditPost.t()} | {:error, any(), RedditPost.t()}
+    def transform(%RedditPost{} = post, transformation, opts \\ []) do
+      transformer = Keyword.get(opts, :transformer, DocumentTransformer.RedditPost)
+      transformer.transform(post, transformation, opts)
+    end
+
+    # Backward compatibility functions
     @spec generate_summary(RedditPost.t(), keyword()) :: {:ok, RedditPost.t()} | {:error, any(), RedditPost.t()}
-    def generate_summary(%RedditPost{} = post, opts) do
-      content = get_content_for_summary(post)
-      
-      case Text.summarize(content, opts) do
-        {:ok, summary} ->
-          {:ok, %{post | summary: summary}}
-          
-        {:error, error} ->
-          {:error, error, post}
-      end
+    def generate_summary(%RedditPost{} = post, opts \\ []) do
+      transform(post, :summary, opts)
     end
     
     @spec generate_keywords(RedditPost.t(), keyword()) :: {:ok, RedditPost.t()} | {:error, any(), RedditPost.t()}
-    def generate_keywords(%RedditPost{} = post, _opts) do
-      # For now, return empty keywords
-      # This could be enhanced with keyword extraction from title/selftext
-      {:ok, %{post | keywords: []}}
+    def generate_keywords(%RedditPost{} = post, opts \\ []) do
+      transform(post, :keywords, opts)
     end
     
     @spec generate_title(RedditPost.t(), keyword()) :: {:ok, RedditPost.t()} | {:error, any(), RedditPost.t()}
-    def generate_title(%RedditPost{} = post, _opts) do
-      # Reddit posts already have titles
-      {:ok, post}
+    def generate_title(%RedditPost{} = post, opts \\ []) do
+      transform(post, :title, opts)
     end
     
     @spec to_text(RedditPost.t(), keyword()) :: {:ok, String.t()} | {:error, any()}
@@ -185,14 +183,6 @@ defmodule Mulberry.Document.RedditPost do
     end
     
     # Private helper functions
-    
-    defp get_content_for_summary(%RedditPost{selftext: selftext, title: title}) when is_binary(selftext) and selftext != "" do
-      "Title: #{title}\n\n#{selftext}"
-    end
-    
-    defp get_content_for_summary(%RedditPost{title: title}) do
-      title
-    end
     
     defp build_text_representation(%RedditPost{} = post) do
       parts = [

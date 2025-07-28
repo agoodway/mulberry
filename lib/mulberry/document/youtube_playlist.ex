@@ -78,7 +78,15 @@ defmodule Mulberry.Document.YouTubePlaylist do
   end
 
   defimpl Mulberry.Document do
+    alias Mulberry.DocumentTransformer
     alias Mulberry.Text
+    
+    # Transform function - new unified interface
+    @spec transform(YouTubePlaylist.t(), atom(), keyword()) :: {:ok, YouTubePlaylist.t()} | {:error, any(), YouTubePlaylist.t()}
+    def transform(%YouTubePlaylist{} = playlist, transformation, opts \\ []) do
+      transformer = Keyword.get(opts, :transformer, DocumentTransformer.YouTube)
+      transformer.transform(playlist, transformation, opts)
+    end
     
     @spec load(YouTubePlaylist.t(), keyword()) :: {:ok, YouTubePlaylist.t()} | {:error, any(), YouTubePlaylist.t()}
     def load(%YouTubePlaylist{} = playlist, _opts) do

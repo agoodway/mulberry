@@ -85,7 +85,15 @@ defmodule Mulberry.Document.FacebookAdCompany do
   end
 
   defimpl Mulberry.Document do
+    alias Mulberry.DocumentTransformer
     alias Mulberry.Text
+    
+    # Transform function - new unified interface
+    @spec transform(FacebookAdCompany.t(), atom(), keyword()) :: {:ok, FacebookAdCompany.t()} | {:error, any(), FacebookAdCompany.t()}
+    def transform(%FacebookAdCompany{} = company, transformation, opts \\ []) do
+      transformer = Keyword.get(opts, :transformer, DocumentTransformer.Default)
+      transformer.transform(company, transformation, opts)
+    end
 
     @spec load(FacebookAdCompany.t(), keyword()) ::
             {:ok, FacebookAdCompany.t()} | {:error, any(), FacebookAdCompany.t()}

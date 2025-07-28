@@ -107,7 +107,15 @@ defmodule Mulberry.Document.FacebookProfile do
   end
 
   defimpl Mulberry.Document do
+    alias Mulberry.DocumentTransformer
     alias Mulberry.Text
+    
+    # Transform function - new unified interface
+    @spec transform(FacebookProfile.t(), atom(), keyword()) :: {:ok, FacebookProfile.t()} | {:error, any(), FacebookProfile.t()}
+    def transform(%FacebookProfile{} = profile, transformation, opts \\ []) do
+      transformer = Keyword.get(opts, :transformer, DocumentTransformer.Default)
+      transformer.transform(profile, transformation, opts)
+    end
 
     @spec load(FacebookProfile.t(), keyword()) ::
             {:ok, FacebookProfile.t()} | {:error, any(), FacebookProfile.t()}

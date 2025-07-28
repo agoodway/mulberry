@@ -7,7 +7,6 @@ defmodule Mulberry.Document.WebPageTest do
 
   alias Mulberry.Document.WebPage
   alias Mulberry.Retriever
-  alias Mulberry.Text
 
   describe "new/1" do
     test "creates a new WebPage struct with URL" do
@@ -113,12 +112,20 @@ defmodule Mulberry.Document.WebPageTest do
         markdown: markdown
       }
       
-      expect(Mulberry.Text, :summarize, fn text -> 
-        assert text == markdown
+      # Create a mock LLM to bypass Config.get_llm
+      mock_llm = %{id: "test-llm"}
+      
+      # Mock the SummarizeDocumentChain since Text.summarize uses it
+      expect(Mulberry.Chains.SummarizeDocumentChain, :new, fn config -> 
+        assert config.llm == mock_llm
+        {:ok, %{chain: "fake"}}
+      end)
+      
+      expect(Mulberry.Chains.SummarizeDocumentChain, :summarize, fn _chain, _doc, _opts -> 
         {:ok, "Generated summary"}
       end)
       
-      result = Mulberry.Document.generate_summary(web_page)
+      result = Mulberry.Document.generate_summary(web_page, llm: mock_llm)
       assert {:ok, %WebPage{summary: summary}} = result
       assert summary == "Generated summary"
     end
@@ -139,12 +146,33 @@ defmodule Mulberry.Document.WebPageTest do
         markdown: markdown
       }
       
-      expect(Mulberry.Text, :title, fn text -> 
-        assert text == markdown
-        {:ok, "Generated Title"}
+      # Create a mock LLM struct to bypass Config.get_llm
+      mock_llm = %LangChain.ChatModels.ChatOpenAI{
+        model: "gpt-3.5-turbo",
+        api_key: "fake-key"
+      }
+      
+      # Create a mock chain
+      mock_chain = %LangChain.Chains.LLMChain{
+        llm: mock_llm,
+        messages: []
+      }
+      
+      # Mock the chain creation
+      stub(LangChain.Chains.LLMChain, :new!, fn _attrs -> 
+        mock_chain
       end)
       
-      result = Mulberry.Document.generate_title(web_page)
+      stub(LangChain.Chains.LLMChain, :add_messages, fn chain, _messages -> 
+        chain
+      end)
+      
+      # Mock the LLMChain.run to return our title
+      expect(LangChain.Chains.LLMChain, :run, fn _chain, _opts -> 
+        {:ok, mock_chain, %LangChain.Message{role: :assistant, content: "Generated Title"}}
+      end)
+      
+      result = Mulberry.Document.generate_title(web_page, llm: mock_llm)
       assert {:ok, %WebPage{title: title}} = result
       assert title == "Generated Title"
     end
@@ -217,11 +245,19 @@ defmodule Mulberry.Document.WebPageTest do
       markdown = "content"
       web_page = %WebPage{markdown: markdown}
       
-      expect(Text, :summarize, fn ^markdown -> 
+      # Create a mock LLM to bypass Config.get_llm
+      mock_llm = %{id: "test-llm"}
+      
+      # Mock the SummarizeDocumentChain to return error
+      expect(Mulberry.Chains.SummarizeDocumentChain, :new, fn _config -> 
+        {:ok, %{chain: "fake"}}
+      end)
+      
+      expect(Mulberry.Chains.SummarizeDocumentChain, :summarize, fn _chain, _doc, _opts -> 
         {:error, "API error"}
       end)
       
-      assert {:error, "API error", ^web_page} = Mulberry.Document.generate_summary(web_page)
+      assert {:error, "API error", ^web_page} = Mulberry.Document.generate_summary(web_page, llm: mock_llm)
     end
 
     test "handles empty markdown gracefully" do

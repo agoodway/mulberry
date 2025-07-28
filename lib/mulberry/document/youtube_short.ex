@@ -84,6 +84,7 @@ defmodule Mulberry.Document.YouTubeShort do
   end
 
   defimpl Mulberry.Document do
+    alias Mulberry.DocumentTransformer
     alias Mulberry.Text
     
     @spec load(YouTubeShort.t(), keyword()) :: {:ok, YouTubeShort.t()} | {:error, any(), YouTubeShort.t()}
@@ -93,30 +94,27 @@ defmodule Mulberry.Document.YouTubeShort do
       {:ok, short}
     end
     
+    # Transform function - new unified interface
+    @spec transform(YouTubeShort.t(), atom(), keyword()) :: {:ok, YouTubeShort.t()} | {:error, any(), YouTubeShort.t()}
+    def transform(%YouTubeShort{} = short, transformation, opts \\ []) do
+      transformer = Keyword.get(opts, :transformer, DocumentTransformer.YouTube)
+      transformer.transform(short, transformation, opts)
+    end
+
+    # Backward compatibility functions
     @spec generate_summary(YouTubeShort.t(), keyword()) :: {:ok, YouTubeShort.t()} | {:error, any(), YouTubeShort.t()}
-    def generate_summary(%YouTubeShort{} = short, opts) do
-      content = get_content_for_summary(short)
-      
-      case Text.summarize(content, opts) do
-        {:ok, summary} ->
-          {:ok, %{short | summary: summary}}
-          
-        {:error, error} ->
-          {:error, error, short}
-      end
+    def generate_summary(%YouTubeShort{} = short, opts \\ []) do
+      transform(short, :summary, opts)
     end
     
     @spec generate_keywords(YouTubeShort.t(), keyword()) :: {:ok, YouTubeShort.t()} | {:error, any(), YouTubeShort.t()}
-    def generate_keywords(%YouTubeShort{} = short, _opts) do
-      # For now, return empty keywords
-      # This could be enhanced with keyword extraction from title
-      {:ok, %{short | keywords: []}}
+    def generate_keywords(%YouTubeShort{} = short, opts \\ []) do
+      transform(short, :keywords, opts)
     end
     
     @spec generate_title(YouTubeShort.t(), keyword()) :: {:ok, YouTubeShort.t()} | {:error, any(), YouTubeShort.t()}
-    def generate_title(%YouTubeShort{} = short, _opts) do
-      # YouTube shorts already have titles
-      {:ok, short}
+    def generate_title(%YouTubeShort{} = short, opts \\ []) do
+      transform(short, :title, opts)
     end
     
     @spec to_text(YouTubeShort.t(), keyword()) :: {:ok, String.t()} | {:error, any()}
@@ -150,19 +148,6 @@ defmodule Mulberry.Document.YouTubeShort do
     end
     
     # Private helper functions
-    
-    defp get_content_for_summary(%YouTubeShort{title: title} = short) do
-      parts = [
-        "Short: #{title}",
-        if(short.channel, do: "Channel: #{short.channel.title}", else: nil),
-        if(short.view_count_text, do: "Views: #{short.view_count_text}", else: nil),
-        if(short.published_time_text, do: "Published: #{short.published_time_text}", else: nil)
-      ]
-      
-      parts
-      |> Enum.filter(& &1)
-      |> Enum.join("\n")
-    end
     
     defp build_text_representation(%YouTubeShort{} = short) do
       parts = [
