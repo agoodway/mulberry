@@ -344,29 +344,22 @@ text = "Long article text..."
 )
 ```
 
-### Working with the Mix Task
+### Working with Mix Tasks
+
+Mulberry provides several Mix tasks for common operations. For a complete reference of all available Mix tasks and their options, see the [Mix Tasks Guide](guides/mix_tasks.md).
 
 ```elixir
 # Fetch and display a webpage
 mix fetch_url https://example.com
 
-# Save webpage as HTML
-mix fetch_url https://example.com --save page.html
+# Perform web searches
+mix search "elixir programming"
 
-# Convert to Markdown and save
-mix fetch_url https://example.com --markdown --save article.md
+# Generate text summaries
+mix text summarize --file article.txt
 
-# Extract text content only
-mix fetch_url https://example.com --show-text
-
-# Use specific browser and wait for content
-mix fetch_url https://spa-app.com --browser firefox --wait-for "#content"
-
-# Non-headless mode for debugging
-mix fetch_url https://example.com --no-headless
-
-# Disable stealth mode for faster scraping
-mix fetch_url https://example.com --no-stealth
+# Conduct research on topics
+mix research "machine learning trends" --max-sources 10
 ```
 
 ### Processing Multiple Documents

@@ -78,6 +78,14 @@ defmodule Mulberry.Document.GoogleAd do
     require Logger
     alias Mulberry.Text
     alias Mulberry.Retriever.GoogleAd, as: GoogleAdRetriever
+    alias Mulberry.DocumentTransformer
+
+    @spec transform(GoogleAd.t(), atom(), keyword()) ::
+            {:ok, GoogleAd.t()} | {:error, any(), GoogleAd.t()}
+    def transform(%GoogleAd{} = ad, transformation, opts \\ []) do
+      transformer = Keyword.get(opts, :transformer, DocumentTransformer.Default)
+      transformer.transform(ad, transformation, opts)
+    end
 
     @spec load(GoogleAd.t(), keyword()) ::
             {:ok, GoogleAd.t()} | {:error, any(), GoogleAd.t()}
