@@ -4,7 +4,6 @@ defmodule Mix.Tasks.FetchUrlTest do
   import Mimic
 
   alias Mix.Tasks.FetchUrl
-  alias Mulberry.Retriever.Playwright
   alias Mulberry.Retriever.Response
 
   setup :verify_on_exit!
@@ -21,7 +20,7 @@ defmodule Mix.Tasks.FetchUrlTest do
       </html>
       """
 
-      expect(Playwright, :get, fn _url, _opts ->
+      expect(Mulberry.Retriever.Playwright, :get, fn _url, _opts ->
         %Response{
           status: :ok,
           content: html_content
@@ -54,7 +53,7 @@ defmodule Mix.Tasks.FetchUrlTest do
       </html>
       """
 
-      expect(Playwright, :get, fn _url, _opts ->
+      expect(Mulberry.Retriever.Playwright, :get, fn _url, _opts ->
         %Response{
           status: :ok,
           content: html_content
@@ -87,7 +86,7 @@ defmodule Mix.Tasks.FetchUrlTest do
       </html>
       """
 
-      expect(Playwright, :get, fn _url, _opts ->
+      expect(Mulberry.Retriever.Playwright, :get, fn _url, _opts ->
         %Response{
           status: :ok,
           content: html_content
@@ -120,7 +119,7 @@ defmodule Mix.Tasks.FetchUrlTest do
     test "fetches URL successfully" do
       html_content = "<html><body><p>Hello World</p></body></html>"
 
-      expect(Playwright, :get, fn url, _opts ->
+      expect(Mulberry.Retriever.Playwright, :get, fn url, _opts ->
         assert url == "https://example.com"
         %Response{
           status: :ok,
@@ -138,7 +137,7 @@ defmodule Mix.Tasks.FetchUrlTest do
     end
 
     test "shows error on failed fetch" do
-      expect(Playwright, :get, fn _url, _opts ->
+      expect(Mulberry.Retriever.Playwright, :get, fn _url, _opts ->
         %Response{
           status: :failed,
           content: nil

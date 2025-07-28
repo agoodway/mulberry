@@ -7,6 +7,11 @@ defmodule Mulberry.Search.FacebookAdsTest do
   alias Mulberry.Retriever.Response
 
   describe "search/3" do
+    setup do
+      # Set test value
+      Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
+    end
+
     test "performs basic search with company name" do
       expect(Retriever, :get, fn module, url, opts ->
         assert module == Mulberry.Retriever.Req
@@ -22,7 +27,6 @@ defmodule Mulberry.Search.FacebookAdsTest do
         {:ok, %Response{status: :ok, content: %{"results" => []}}}
       end)
 
-      Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
       assert {:ok, %{"results" => []}} = FacebookAds.search("Nike")
     end
 
@@ -35,7 +39,6 @@ defmodule Mulberry.Search.FacebookAdsTest do
         {:ok, %Response{status: :ok, content: %{"results" => []}}}
       end)
 
-      Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
       assert {:ok, _} = FacebookAds.search("123456789", 20, search_by: :page_id)
     end
 
@@ -52,8 +55,6 @@ defmodule Mulberry.Search.FacebookAdsTest do
         {:ok, %Response{status: :ok, content: %{"results" => []}}}
       end)
 
-      Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
-      
       opts = [
         country: "US",
         status: "ACTIVE",
@@ -73,7 +74,6 @@ defmodule Mulberry.Search.FacebookAdsTest do
         {:ok, %Response{status: :ok, content: %{"results" => []}}}
       end)
 
-      Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
       assert {:ok, _} = FacebookAds.search("Test", 20, retriever: mock_retriever)
     end
   end

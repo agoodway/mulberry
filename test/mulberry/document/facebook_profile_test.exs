@@ -1,5 +1,6 @@
 defmodule Mulberry.Document.FacebookProfileTest do
   use ExUnit.Case, async: true
+  use Mimic
 
   alias Mulberry.Document
   alias Mulberry.Document.FacebookProfile
@@ -70,12 +71,14 @@ defmodule Mulberry.Document.FacebookProfileTest do
     end
 
     test "generate_summary/2 generates a summary of the profile", %{profile: profile} do
-      # Mock the Text.summarize function
-      _expect_summary = "A popular pizza restaurant in Regina offering Mediterranean specialties."
+      expected_summary = "A popular pizza restaurant in Regina offering Mediterranean specialties."
 
-      # Since we can't easily mock Text.summarize in tests, we'll skip this for now
-      # In a real test, you would use Mimic to mock Mulberry.Text
-      assert {:ok, %FacebookProfile{}} = Document.generate_summary(profile)
+      expect(Mulberry.Text, :summarize, fn _text, _opts ->
+        {:ok, expected_summary}
+      end)
+
+      assert {:ok, updated_profile} = Document.generate_summary(profile)
+      assert updated_profile.summary == expected_summary
     end
 
     test "generate_keywords/2 extracts keywords from profile", %{profile: profile} do
@@ -121,10 +124,14 @@ defmodule Mulberry.Document.FacebookProfileTest do
     end
 
     test "to_tokens/2 tokenizes the profile text", %{profile: profile} do
-      # This would normally use Text.tokens which requires AI
-      # For testing, we'll just verify it returns a result
+      expected_tokens = ["The", "Copper", "Kettle", "Restaurant", "Pizza", "place"]
+
+      expect(Mulberry.Text, :tokens, fn _text ->
+        {:ok, expected_tokens}
+      end)
+
       assert {:ok, tokens} = Document.to_tokens(profile)
-      assert is_list(tokens)
+      assert tokens == expected_tokens
     end
 
     test "to_chunks/2 splits profile into chunks", %{profile: profile} do

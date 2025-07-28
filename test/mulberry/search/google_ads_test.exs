@@ -7,18 +7,7 @@ defmodule Mulberry.Search.GoogleAdsTest do
 
   describe "search/3" do
     setup do
-      # Store the original config and restore it after the test
-      original_key = Application.get_env(:mulberry, :scrapecreators_api_key)
       Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
-      
-      on_exit(fn -> 
-        if original_key do
-          Application.put_env(:mulberry, :scrapecreators_api_key, original_key)
-        else
-          Application.delete_env(:mulberry, :scrapecreators_api_key)
-        end
-      end)
-      
       :ok
     end
 

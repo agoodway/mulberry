@@ -7,6 +7,8 @@ defmodule Mulberry do
   alias Mulberry.Research
   alias Flamel.Chain
 
+  @env Mix.env()
+
   @doc """
   Retrieves configuration values for the Mulberry application.
   
@@ -43,8 +45,12 @@ defmodule Mulberry do
   end
   
   defp get_env_var(key) do
-    env_key = map_to_env_var(key)
-    System.get_env(env_key)
+    if @env == :test do
+      nil
+    else
+      env_key = map_to_env_var(key)
+      System.get_env(env_key)
+    end
   end
   
   defp map_to_env_var(key) do

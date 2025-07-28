@@ -7,6 +7,11 @@ defmodule Mulberry.Search.YouTubeTest do
   alias Mulberry.Retriever.Response
 
   describe "search/3" do
+    setup do
+      # Set test value
+      Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
+    end
+
     test "performs basic search with required parameters" do
       expect(Retriever, :get, fn module, url, opts ->
         assert module == Mulberry.Retriever.Req
@@ -15,14 +20,17 @@ defmodule Mulberry.Search.YouTubeTest do
         # Check params
         assert opts[:params] == %{query: "elixir programming"}
         
-        # Check headers
+        # Check headers - the headers list should contain the API key tuple
         headers = opts[:headers]
-        assert {"x-api-key", "test_api_key"} in headers
+        assert is_list(headers)
+        assert Enum.any?(headers, fn 
+          {"x-api-key", "test_api_key"} -> true
+          _ -> false
+        end), "Expected headers to contain {\"x-api-key\", \"test_api_key\"}, but got: #{inspect(headers)}"
         
         {:ok, %Response{status: :ok, content: %{"videos" => []}}}
       end)
 
-      Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
       assert {:ok, %{"videos" => []}} = YouTube.search("elixir programming")
     end
 
@@ -38,8 +46,6 @@ defmodule Mulberry.Search.YouTubeTest do
         {:ok, %Response{status: :ok, content: %{"videos" => []}}}
       end)
 
-      Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
-      
       opts = [
         upload_date: "lastMonth",
         sort_by: "viewCount",
@@ -55,7 +61,6 @@ defmodule Mulberry.Search.YouTubeTest do
         {:error, :connection_failed}
       end)
 
-      Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
       assert {:error, :connection_failed} = YouTube.search("test")
     end
   end

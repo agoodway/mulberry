@@ -77,7 +77,11 @@ defmodule Mulberry.MixProject do
     [
       extras: [
         LICENSE: [title: "License"],
-        "README.md": [title: "Readme"]
+        "README.md": [title: "Readme"],
+        "guides/mix_tasks.md": [title: "Mix Tasks Guide"]
+      ],
+      groups_for_extras: [
+        Guides: Path.wildcard("guides/*.md")
       ],
       main: "readme",
       source_url: @source_url,

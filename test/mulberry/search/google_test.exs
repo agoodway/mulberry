@@ -9,13 +9,17 @@ defmodule Mulberry.Search.GoogleTest do
   alias Mulberry.Document.WebPage
 
   describe "search/3" do
+    setup do
+      # Set test value
+      Application.put_env(:mulberry, :scrapecreators_api_key,
+        "test_api_key"
+      ) 
+    end
     test "searches successfully with valid API key" do
       query = Faker.Lorem.words(3) |> Enum.join(" ")
       limit = 5
-      api_key = Faker.UUID.v4()
-      
-      Application.put_env(:mulberry, :scrapecreators_api_key, api_key)
-      
+      api_key = Application.get_env(:mulberry, :scrapecreators_api_key)
+
       expect(Mulberry.Retriever, :get, fn Mulberry.Retriever.Req, url, opts ->
         assert url == "https://api.scrapecreators.com/v1/google/search"
         headers = opts[:headers]
@@ -45,8 +49,6 @@ defmodule Mulberry.Search.GoogleTest do
       
       {:ok, response} = Google.search(query, limit)
       assert response =~ "results"
-      
-      Application.delete_env(:mulberry, :scrapecreators_api_key)
     end
 
     test "searches with region parameter" do
@@ -78,10 +80,6 @@ defmodule Mulberry.Search.GoogleTest do
 
     test "handles empty results" do
       query = Faker.Lorem.word()
-      api_key = Faker.UUID.v4()
-      
-      Application.put_env(:mulberry, :scrapecreators_api_key, api_key)
-      
       expect(Mulberry.Retriever, :get, fn Mulberry.Retriever.Req, _, _ ->
         {:ok, %Mulberry.Retriever.Response{
           status: :ok,
@@ -91,14 +89,15 @@ defmodule Mulberry.Search.GoogleTest do
       
       assert {:ok, response} = Google.search(query, 10)
       assert response =~ "results"
-      
-      Application.delete_env(:mulberry, :scrapecreators_api_key)
     end
 
     test "handles missing API key" do
+      # Store original values
+      _original_app_config = Application.get_env(:mulberry, :scrapecreators_api_key)
+      _original_env = System.get_env("SCRAPECREATORS_API_KEY")
+      
       # Clear both app config and env var
       Application.delete_env(:mulberry, :scrapecreators_api_key)
-      original_env = System.get_env("SCRAPECREATORS_API_KEY")
       System.delete_env("SCRAPECREATORS_API_KEY")
       
       # When API key is missing, the API will return an error
@@ -114,19 +113,10 @@ defmodule Mulberry.Search.GoogleTest do
       end)
       
       assert {:error, _} = Google.search("test", 10)
-      
-      # Restore original env if it existed
-      if original_env do
-        System.put_env("SCRAPECREATORS_API_KEY", original_env)
-      end
     end
 
     test "handles API error response" do
       query = Faker.Lorem.word()
-      api_key = Faker.UUID.v4()
-      
-      Application.put_env(:mulberry, :scrapecreators_api_key, api_key)
-      
       expect(Mulberry.Retriever, :get, fn Mulberry.Retriever.Req, _, _ ->
         {:error, %Mulberry.Retriever.Response{
           status: :failed,
@@ -136,16 +126,10 @@ defmodule Mulberry.Search.GoogleTest do
       
       assert {:error, response} = Google.search(query, 10)
       assert response.status == :failed
-      
-      Application.delete_env(:mulberry, :scrapecreators_api_key)
     end
 
     test "handles API failure response" do
       query = Faker.Lorem.word()
-      api_key = Faker.UUID.v4()
-      
-      Application.put_env(:mulberry, :scrapecreators_api_key, api_key)
-      
       expect(Mulberry.Retriever, :get, fn Mulberry.Retriever.Req, _, _ ->
         {:ok, %Mulberry.Retriever.Response{
           status: :ok,
@@ -156,8 +140,6 @@ defmodule Mulberry.Search.GoogleTest do
       assert {:ok, response} = Google.search(query, 10)
       parsed = Jason.decode!(response)
       assert parsed["success"] == false
-      
-      Application.delete_env(:mulberry, :scrapecreators_api_key)
     end
   end
 

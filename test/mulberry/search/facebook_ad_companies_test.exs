@@ -7,6 +7,11 @@ defmodule Mulberry.Search.FacebookAdCompaniesTest do
   alias Mulberry.Retriever.Response
 
   describe "search/3" do
+    setup do
+      # Set test value
+      Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
+    end
+
     test "performs basic search with query parameter" do
       expect(Retriever, :get, fn module, url, opts ->
         assert module == Mulberry.Retriever.Req
@@ -22,7 +27,6 @@ defmodule Mulberry.Search.FacebookAdCompaniesTest do
         {:ok, %Response{status: :ok, content: %{"searchResults" => []}}}
       end)
 
-      Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
       assert {:ok, %{"searchResults" => []}} = FacebookAdCompanies.search("Nike")
     end
 
@@ -34,7 +38,6 @@ defmodule Mulberry.Search.FacebookAdCompaniesTest do
         {:ok, %Response{status: :ok, content: %{"searchResults" => []}}}
       end)
 
-      Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
       assert {:ok, _} = FacebookAdCompanies.search("Test", 20, retriever: mock_retriever)
     end
 
@@ -43,7 +46,6 @@ defmodule Mulberry.Search.FacebookAdCompaniesTest do
         {:error, "API request failed"}
       end)
 
-      Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
       assert {:error, "API request failed"} = FacebookAdCompanies.search("Test")
     end
   end
@@ -159,6 +161,23 @@ defmodule Mulberry.Search.FacebookAdCompaniesTest do
   end
 
   describe "integration with Mulberry.search/3" do
+    setup do
+      # Store original value if it exists
+      original_value = Application.get_env(:mulberry, :scrapecreators_api_key)
+      
+      # Set test value
+      Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
+      
+      on_exit(fn -> 
+        # Restore original value or delete
+        if original_value do
+          Application.put_env(:mulberry, :scrapecreators_api_key, original_value)
+        else
+          Application.delete_env(:mulberry, :scrapecreators_api_key)
+        end
+      end)
+    end
+
     test "works with the high-level search interface" do
       expect(Retriever, :get, fn _module, _url, _opts ->
         {:ok, %Response{
@@ -180,8 +199,6 @@ defmodule Mulberry.Search.FacebookAdCompaniesTest do
           }
         }}
       end)
-
-      Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
       
       # The high-level search function now properly handles the tuple returns
       {:ok, companies} = Mulberry.search(FacebookAdCompanies, "Example", 10)

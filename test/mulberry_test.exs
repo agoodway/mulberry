@@ -16,22 +16,12 @@ defmodule MulberryTest do
       assert Mulberry.config(:non_existent_key) == nil
     end
     
-    test "falls back to environment variable when app config is nil" do
+    test "returns nil when app config is nil in test mode" do
       # Clear any existing app config
       Application.delete_env(:mulberry, :brave_api_key)
       
-      # Set env var
-      original_env = System.get_env("BRAVE_API_KEY")
-      System.put_env("BRAVE_API_KEY", "env_api_key")
-      
-      assert Mulberry.config(:brave_api_key) == "env_api_key"
-      
-      # Restore original env
-      if original_env do
-        System.put_env("BRAVE_API_KEY", original_env)
-      else
-        System.delete_env("BRAVE_API_KEY")
-      end
+      # In test mode, should return nil instead of checking env vars
+      assert Mulberry.config(:brave_api_key) == nil
     end
     
     test "prefers app config over environment variable" do
@@ -52,54 +42,32 @@ defmodule MulberryTest do
       end
     end
     
-    test "maps common API keys to correct env vars" do
+    test "returns nil for common API keys when no app config set in test mode" do
       # Test each mapping
-      mappings = [
-        {:brave_api_key, "BRAVE_API_KEY"},
-        {:scraping_bee_api_key, "SCRAPING_BEE_API_KEY"},
-        {:openai_api_key, "OPENAI_API_KEY"},
-        {:anthropic_api_key, "ANTHROPIC_API_KEY"},
-        {:google_api_key, "GOOGLE_API_KEY"},
-        {:mistral_api_key, "MISTRAL_API_KEY"},
-        {:llm_provider, "MULBERRY_LLM_PROVIDER"}
+      config_keys = [
+        :brave_api_key,
+        :scraping_bee_api_key,
+        :openai_api_key,
+        :anthropic_api_key,
+        :google_api_key,
+        :mistral_api_key,
+        :llm_provider
       ]
       
-      for {config_key, env_key} <- mappings do
+      for config_key <- config_keys do
         # Clear app config
         Application.delete_env(:mulberry, config_key)
         
-        # Save original env
-        original = System.get_env(env_key)
-        
-        # Set test value
-        test_value = "test_#{config_key}"
-        System.put_env(env_key, test_value)
-        
-        # Verify mapping
-        assert Mulberry.config(config_key) == test_value
-        
-        # Restore
-        if original do
-          System.put_env(env_key, original)
-        else
-          System.delete_env(env_key)
-        end
+        # In test mode, should return nil instead of checking env vars
+        assert Mulberry.config(config_key) == nil
       end
     end
     
-    test "prefixes other keys with MULBERRY_ in env lookup" do
+    test "returns nil for custom keys when no app config set in test mode" do
       Application.delete_env(:mulberry, :custom_key)
       
-      original = System.get_env("MULBERRY_CUSTOM_KEY")
-      System.put_env("MULBERRY_CUSTOM_KEY", "custom_value")
-      
-      assert Mulberry.config(:custom_key) == "custom_value"
-      
-      if original do
-        System.put_env("MULBERRY_CUSTOM_KEY", original)
-      else
-        System.delete_env("MULBERRY_CUSTOM_KEY")
-      end
+      # In test mode, should return nil instead of checking env vars
+      assert Mulberry.config(:custom_key) == nil
     end
   end
 

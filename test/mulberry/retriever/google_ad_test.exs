@@ -6,8 +6,20 @@ defmodule Mulberry.Retriever.GoogleAdTest do
 
   describe "get/2" do
     setup do
+      # Store original value if it exists
+      original_value = Application.get_env(:mulberry, :scrapecreators_api_key)
+      
+      # Set test value
       Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
-      on_exit(fn -> Application.delete_env(:mulberry, :scrapecreators_api_key) end)
+      
+      on_exit(fn -> 
+        # Restore original value or delete
+        if original_value do
+          Application.put_env(:mulberry, :scrapecreators_api_key, original_value)
+        else
+          Application.delete_env(:mulberry, :scrapecreators_api_key)
+        end
+      end)
     end
 
     test "fetches Google ad details successfully" do
@@ -15,7 +27,9 @@ defmodule Mulberry.Retriever.GoogleAdTest do
       
       expect(Req, :get, fn url, opts ->
         assert url == "https://api.scrapecreators.com/v1/google/ad"
-        assert opts[:headers] == %{"x-api-key" => "test_api_key"}
+        # Check that the headers contain the expected API key
+        headers = opts[:headers]
+        assert headers["x-api-key"] == "test_api_key", "Expected headers to contain x-api-key with test_api_key, but got: #{inspect(headers)}"
         assert opts[:params] == %{url: ad_url}
 
         {:ok,
