@@ -84,6 +84,7 @@ defmodule Mulberry.Document.YouTubeVideo do
   end
 
   defimpl Mulberry.Document do
+    alias Mulberry.DocumentTransformer
     alias Mulberry.Text
     
     @spec load(YouTubeVideo.t(), keyword()) :: {:ok, YouTubeVideo.t()} | {:error, any(), YouTubeVideo.t()}
@@ -93,30 +94,27 @@ defmodule Mulberry.Document.YouTubeVideo do
       {:ok, video}
     end
     
+    # Transform function - new unified interface
+    @spec transform(YouTubeVideo.t(), atom(), keyword()) :: {:ok, YouTubeVideo.t()} | {:error, any(), YouTubeVideo.t()}
+    def transform(%YouTubeVideo{} = video, transformation, opts \\ []) do
+      transformer = Keyword.get(opts, :transformer, DocumentTransformer.YouTube)
+      transformer.transform(video, transformation, opts)
+    end
+
+    # Backward compatibility functions
     @spec generate_summary(YouTubeVideo.t(), keyword()) :: {:ok, YouTubeVideo.t()} | {:error, any(), YouTubeVideo.t()}
-    def generate_summary(%YouTubeVideo{} = video, opts) do
-      content = get_content_for_summary(video)
-      
-      case Text.summarize(content, opts) do
-        {:ok, summary} ->
-          {:ok, %{video | summary: summary}}
-          
-        {:error, error} ->
-          {:error, error, video}
-      end
+    def generate_summary(%YouTubeVideo{} = video, opts \\ []) do
+      transform(video, :summary, opts)
     end
     
     @spec generate_keywords(YouTubeVideo.t(), keyword()) :: {:ok, YouTubeVideo.t()} | {:error, any(), YouTubeVideo.t()}
-    def generate_keywords(%YouTubeVideo{} = video, _opts) do
-      # For now, return empty keywords
-      # This could be enhanced with keyword extraction from title
-      {:ok, %{video | keywords: []}}
+    def generate_keywords(%YouTubeVideo{} = video, opts \\ []) do
+      transform(video, :keywords, opts)
     end
     
     @spec generate_title(YouTubeVideo.t(), keyword()) :: {:ok, YouTubeVideo.t()} | {:error, any(), YouTubeVideo.t()}
-    def generate_title(%YouTubeVideo{} = video, _opts) do
-      # YouTube videos already have titles
-      {:ok, video}
+    def generate_title(%YouTubeVideo{} = video, opts \\ []) do
+      transform(video, :title, opts)
     end
     
     @spec to_text(YouTubeVideo.t(), keyword()) :: {:ok, String.t()} | {:error, any()}
@@ -150,20 +148,6 @@ defmodule Mulberry.Document.YouTubeVideo do
     end
     
     # Private helper functions
-    
-    defp get_content_for_summary(%YouTubeVideo{title: title} = video) do
-      parts = [
-        "Title: #{title}",
-        if(video.channel, do: "Channel: #{video.channel.title}", else: nil),
-        if(video.view_count_text, do: "Views: #{video.view_count_text}", else: nil),
-        if(video.published_time_text, do: "Published: #{video.published_time_text}", else: nil),
-        if(video.length_text, do: "Duration: #{video.length_text}", else: nil)
-      ]
-      
-      parts
-      |> Enum.filter(& &1)
-      |> Enum.join("\n")
-    end
     
     defp build_text_representation(%YouTubeVideo{} = video) do
       parts = [

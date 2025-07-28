@@ -26,6 +26,7 @@ defmodule Mulberry.Document.File do
 
   defimpl Mulberry.Document do
     alias Mulberry.Document
+    alias Mulberry.DocumentTransformer
     alias Mulberry.Text
 
     def load(file, opts \\ [])
@@ -63,49 +64,25 @@ defmodule Mulberry.Document.File do
       {:error, :path_not_provided, file}
     end
 
-    def generate_summary(file, opts \\ [])
+    # Transform function - new unified interface
+    def transform(file, transformation, opts \\ [])
 
-    def generate_summary(%Mulberry.Document.File{contents: contents} = file, _opts)
-        when is_binary(contents) do
-      case Text.summarize(contents) do
-        {:ok, summary} ->
-          {:ok, %{file | summary: summary}}
-
-        {:error, error} ->
-          {:error, error, file}
-      end
+    def transform(%Mulberry.Document.File{} = file, transformation, opts) do
+      transformer = Keyword.get(opts, :transformer, DocumentTransformer.Default)
+      transformer.transform(file, transformation, opts)
     end
 
-    def generate_summary(%Mulberry.Document.File{} = file, _opts) do
-      {:error, :not_loaded, file}
+    # Backward compatibility functions
+    def generate_summary(file, opts \\ []) do
+      transform(file, :summary, opts)
     end
 
-    def generate_keywords(file, opts \\ [])
-
-    def generate_keywords(%Mulberry.Document.File{contents: contents} = file, _opts)
-        when is_binary(contents) do
-      {:ok, file}
+    def generate_keywords(file, opts \\ []) do
+      transform(file, :keywords, opts)
     end
 
-    def generate_keywords(%Mulberry.Document.File{} = file, _opts) do
-      {:error, :not_loaded, file}
-    end
-
-    def generate_title(file, opts \\ [])
-
-    def generate_title(%Mulberry.Document.File{contents: contents} = file, _opts)
-        when is_binary(contents) do
-      case Text.title(contents) do
-        {:ok, title} ->
-          {:ok, %{file | title: title}}
-
-        {:error, error} ->
-          {:error, error, file}
-      end
-    end
-
-    def generate_title(%Mulberry.Document.File{} = file, _opts) do
-      {:error, :not_loaded, file}
+    def generate_title(file, opts \\ []) do
+      transform(file, :title, opts)
     end
 
     def to_text(file, opts \\ [])

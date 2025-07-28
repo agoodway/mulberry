@@ -65,6 +65,7 @@ defmodule Mulberry.Document.YouTubeChannel do
   end
 
   defimpl Mulberry.Document do
+    alias Mulberry.DocumentTransformer
     alias Mulberry.Text
     
     @spec load(YouTubeChannel.t(), keyword()) :: {:ok, YouTubeChannel.t()} | {:error, any(), YouTubeChannel.t()}
@@ -74,30 +75,27 @@ defmodule Mulberry.Document.YouTubeChannel do
       {:ok, channel}
     end
     
+    # Transform function - new unified interface
+    @spec transform(YouTubeChannel.t(), atom(), keyword()) :: {:ok, YouTubeChannel.t()} | {:error, any(), YouTubeChannel.t()}
+    def transform(%YouTubeChannel{} = channel, transformation, opts \\ []) do
+      transformer = Keyword.get(opts, :transformer, DocumentTransformer.YouTube)
+      transformer.transform(channel, transformation, opts)
+    end
+
+    # Backward compatibility functions
     @spec generate_summary(YouTubeChannel.t(), keyword()) :: {:ok, YouTubeChannel.t()} | {:error, any(), YouTubeChannel.t()}
-    def generate_summary(%YouTubeChannel{} = channel, opts) do
-      content = get_content_for_summary(channel)
-      
-      case Text.summarize(content, opts) do
-        {:ok, summary} ->
-          {:ok, %{channel | summary: summary}}
-          
-        {:error, error} ->
-          {:error, error, channel}
-      end
+    def generate_summary(%YouTubeChannel{} = channel, opts \\ []) do
+      transform(channel, :summary, opts)
     end
     
     @spec generate_keywords(YouTubeChannel.t(), keyword()) :: {:ok, YouTubeChannel.t()} | {:error, any(), YouTubeChannel.t()}
-    def generate_keywords(%YouTubeChannel{} = channel, _opts) do
-      # For now, return empty keywords
-      # This could be enhanced with keyword extraction from title and description
-      {:ok, %{channel | keywords: []}}
+    def generate_keywords(%YouTubeChannel{} = channel, opts \\ []) do
+      transform(channel, :keywords, opts)
     end
     
     @spec generate_title(YouTubeChannel.t(), keyword()) :: {:ok, YouTubeChannel.t()} | {:error, any(), YouTubeChannel.t()}
-    def generate_title(%YouTubeChannel{} = channel, _opts) do
-      # YouTube channels already have titles
-      {:ok, channel}
+    def generate_title(%YouTubeChannel{} = channel, opts \\ []) do
+      transform(channel, :title, opts)
     end
     
     @spec to_text(YouTubeChannel.t(), keyword()) :: {:ok, String.t()} | {:error, any()}
@@ -131,20 +129,6 @@ defmodule Mulberry.Document.YouTubeChannel do
     end
     
     # Private helper functions
-    
-    defp get_content_for_summary(%YouTubeChannel{} = channel) do
-      parts = [
-        "Channel: #{channel.title}",
-        if(channel.handle, do: "Handle: #{channel.handle}", else: nil),
-        if(channel.description, do: "Description: #{channel.description}", else: nil),
-        if(channel.subscriber_count, do: "Subscribers: #{channel.subscriber_count}", else: nil),
-        if(channel.video_count, do: "Videos: #{channel.video_count}", else: nil)
-      ]
-      
-      parts
-      |> Enum.filter(& &1)
-      |> Enum.join("\n")
-    end
     
     defp build_text_representation(%YouTubeChannel{} = channel) do
       parts = [

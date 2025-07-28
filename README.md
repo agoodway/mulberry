@@ -464,6 +464,169 @@ def handle_event("upload", _params, socket) do
 end
 ```
 
+### Custom Document Transformations
+
+Mulberry uses a flexible DocumentTransformer behavior that allows you to add custom transformations to documents. Here's how to create and use your own transformations:
+
+```elixir
+# 1. Create a custom transformer module
+defmodule MyApp.DocumentTransformer.Sentiment do
+  @moduledoc """
+  Custom transformer that adds sentiment analysis to documents.
+  """
+  
+  @behaviour Mulberry.DocumentTransformer
+  
+  alias Mulberry.Text
+  
+  @impl true
+  def transform(document, transformation, opts \\ [])
+  
+  # Add a new :sentiment transformation
+  def transform(document, :sentiment, opts) do
+    # Extract text from the document
+    text = get_document_text(document)
+    
+    # Perform sentiment analysis (using your preferred method)
+    sentiment = analyze_sentiment(text, opts)
+    
+    # Add the sentiment to the document
+    {:ok, Map.put(document, :sentiment, sentiment)}
+  end
+  
+  # Add a new :entities transformation for named entity recognition
+  def transform(document, :entities, opts) do
+    text = get_document_text(document)
+    
+    # Extract entities using an LLM
+    prompt = "Extract all named entities (people, places, organizations) from this text: #{text}"
+    
+    case Text.classify(text, 
+      categories: ["person", "place", "organization", "other"],
+      system_message: prompt,
+      provider: Keyword.get(opts, :provider, :openai)
+    ) do
+      {:ok, entities} ->
+        {:ok, Map.put(document, :entities, entities)}
+      {:error, reason} ->
+        {:error, reason, document}
+    end
+  end
+  
+  # Delegate standard transformations to the default transformer
+  def transform(document, transformation, opts) when transformation in [:summary, :keywords, :title] do
+    Mulberry.DocumentTransformer.Default.transform(document, transformation, opts)
+  end
+  
+  # Handle unknown transformations
+  def transform(document, transformation, _opts) do
+    {:error, {:unsupported_transformation, transformation}, document}
+  end
+  
+  # Helper to extract text from various document types
+  defp get_document_text(document) do
+    cond do
+      Map.has_key?(document, :markdown) && is_binary(document.markdown) -> document.markdown
+      Map.has_key?(document, :content) && is_binary(document.content) -> document.content
+      Map.has_key?(document, :contents) && is_binary(document.contents) -> document.contents
+      true -> ""
+    end
+  end
+  
+  defp analyze_sentiment(text, opts) do
+    # Simple example - you could use an LLM or sentiment analysis library
+    provider = Keyword.get(opts, :provider, :openai)
+    
+    case Text.classify(text, 
+      categories: ["positive", "negative", "neutral"],
+      provider: provider
+    ) do
+      {:ok, sentiment} -> sentiment
+      {:error, _} -> "unknown"
+    end
+  end
+end
+
+# 2. Use your custom transformer with documents
+alias Mulberry.Document
+
+# Load a webpage
+{:ok, webpage} = Document.WebPage.new(%{url: "https://news.example.com/article"})
+                 |> Document.load()
+
+# Use the custom transformer for sentiment analysis
+{:ok, webpage_with_sentiment} = Document.transform(webpage, :sentiment, 
+  transformer: MyApp.DocumentTransformer.Sentiment
+)
+
+IO.puts("Sentiment: #{webpage_with_sentiment.sentiment}")
+
+# Use multiple transformations
+{:ok, analyzed_page} = webpage
+                       |> Document.transform(:sentiment, transformer: MyApp.DocumentTransformer.Sentiment)
+                       |> elem(1)
+                       |> Document.transform(:entities, transformer: MyApp.DocumentTransformer.Sentiment)
+
+# 3. Create a specialized transformer for a specific document type
+defmodule MyApp.DocumentTransformer.NewsArticle do
+  @behaviour Mulberry.DocumentTransformer
+  
+  @impl true
+  def transform(document, :metadata, opts) do
+    # Extract article metadata like author, date, etc.
+    text = get_document_text(document)
+    
+    prompt = """
+    Extract the following from this news article:
+    - Author
+    - Publication date
+    - Main topic
+    - Key quotes
+    
+    Article: #{text}
+    """
+    
+    # Use an LLM to extract structured data
+    # ... implementation ...
+    
+    {:ok, Map.put(document, :metadata, extracted_metadata)}
+  end
+  
+  # ... other transformations ...
+end
+
+# 4. Chain transformations together
+import Flamel.Chain
+
+result = webpage
+         |> Chain.apply(&Document.load/1)
+         |> Chain.apply(&Document.transform(&1, :summary))
+         |> Chain.apply(&Document.transform(&1, :sentiment, transformer: MyApp.DocumentTransformer.Sentiment))
+         |> Chain.apply(&Document.transform(&1, :entities, transformer: MyApp.DocumentTransformer.Sentiment))
+         |> Chain.to_tuple()
+
+case result do
+  {:ok, final_doc} ->
+    IO.inspect(final_doc.summary)
+    IO.inspect(final_doc.sentiment)
+    IO.inspect(final_doc.entities)
+  {:error, reason} ->
+    IO.puts("Processing failed: #{inspect(reason)}")
+end
+
+# 5. Set a default transformer for all operations
+# In your config/runtime.exs:
+config :mulberry, :default_transformer, MyApp.DocumentTransformer.Sentiment
+
+# Now all documents will use your transformer by default
+{:ok, doc_with_sentiment} = Document.transform(webpage, :sentiment)
+# No need to specify transformer option
+```
+
+The DocumentTransformer behavior provides a clean, extensible way to add new document processing capabilities while maintaining compatibility with existing transformations like `:summary`, `:keywords`, and `:title`.
+
+```
+
 ## TODO
 
 - [ ] Text to audio

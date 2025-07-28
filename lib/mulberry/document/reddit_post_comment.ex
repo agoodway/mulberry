@@ -88,8 +88,16 @@ defmodule Mulberry.Document.RedditPostComment do
   end
   
   defimpl Mulberry.Document do
+    alias Mulberry.DocumentTransformer
     alias Mulberry.Retriever
     alias Mulberry.Text
+    
+    # Transform function - new unified interface
+    @spec transform(RedditPostComment.t(), atom(), keyword()) :: {:ok, RedditPostComment.t()} | {:error, any(), RedditPostComment.t()}
+    def transform(%RedditPostComment{} = doc, transformation, opts \\ []) do
+      transformer = Keyword.get(opts, :transformer, DocumentTransformer.RedditPostComment)
+      transformer.transform(doc, transformation, opts)
+    end
     
     @reddit_comments_url "https://api.scrapecreators.com/v1/reddit/post/comments"
     

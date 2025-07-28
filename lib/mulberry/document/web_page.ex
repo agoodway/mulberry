@@ -37,6 +37,7 @@ defmodule Mulberry.Document.WebPage do
   defimpl Mulberry.Document do
     require Logger
     alias Mulberry.Document
+    alias Mulberry.DocumentTransformer
     alias Mulberry.Retriever
     alias Mulberry.Retriever.Response
     alias Mulberry.Text
@@ -68,57 +69,25 @@ defmodule Mulberry.Document.WebPage do
       end
     end
 
-    def generate_summary(web_page, _opts)
+    # Transform function - new unified interface
+    def transform(web_page, transformation, opts \\ [])
 
-    def generate_summary(%WebPage{markdown: markdown} = web_page, _opts)
-        when is_binary(markdown) do
-      case Text.summarize(markdown) do
-        {:ok, summary} ->
-          {:ok, Map.replace(web_page, :summary, summary)}
-
-        {:error, error} ->
-          {:error, error, web_page}
-      end
+    def transform(%WebPage{} = web_page, transformation, opts) do
+      transformer = Keyword.get(opts, :transformer, DocumentTransformer.Default)
+      transformer.transform(web_page, transformation, opts)
     end
 
-    def generate_summary(%WebPage{} = web_page, _opts) do
-      {:error, :not_loaded, web_page}
+    # Backward compatibility functions
+    def generate_summary(web_page, opts \\ []) do
+      transform(web_page, :summary, opts)
     end
 
-    def generate_keywords(web_page, opts \\ [])
-
-    def generate_keywords(%WebPage{markdown: markdown} = web_page, _opts)
-        when is_binary(markdown) do
-      {:ok, Map.replace(web_page, :keywords, [])}
+    def generate_keywords(web_page, opts \\ []) do
+      transform(web_page, :keywords, opts)
     end
 
-    def generate_keywords(%WebPage{} = web_page, _opts) do
-      {:error, :not_loaded, web_page}
-    end
-
-    def generate_title(web_page, opts \\ [])
-
-    def generate_title(%WebPage{markdown: markdown} = web_page, _opts)
-        when is_binary(markdown) do
-      if web_page.title do
-        {:ok, web_page}
-      else
-        case Text.title(markdown) do
-          {:ok, title} ->
-            {:ok, Map.replace(web_page, :title, title)}
-
-          {:error, error} ->
-            Logger.error(
-              "#{__MODULE__} failed to generate title: #{inspect(error, limit: :infinity, printable_limit: :infinity)}"
-            )
-
-            {:error, error, web_page}
-        end
-      end
-    end
-
-    def generate_title(%WebPage{} = web_page, _opts) do
-      {:error, :not_loaded, web_page}
+    def generate_title(web_page, opts \\ []) do
+      transform(web_page, :title, opts)
     end
 
     def to_text(web_page, opts \\ [])
