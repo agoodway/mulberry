@@ -8,6 +8,8 @@ defmodule Mulberry.DocumentTransformer.YouTube do
 
   alias Mulberry.Text
 
+  @description_truncation_limit 200
+
   @impl true
   def transform(document, transformation, opts \\ [])
 
@@ -74,7 +76,7 @@ defmodule Mulberry.DocumentTransformer.YouTube do
       "Short: #{title}",
       if(short.channel, do: "Channel: #{short.channel.title}", else: nil),
       if(short.view_count_text, do: "Views: #{short.view_count_text}", else: nil),
-      if(Map.get(short, :published_time_text), do: "Published: #{short.published_time_text}", else: nil)
+      if(short.published_time_text, do: "Published: #{short.published_time_text}", else: nil)
     ]
     
     parts
@@ -102,7 +104,7 @@ defmodule Mulberry.DocumentTransformer.YouTube do
       "Channel: #{title}",
       if(channel.subscriber_count_text, do: "Subscribers: #{channel.subscriber_count_text}", else: nil),
       if(channel.video_count_text, do: "Videos: #{channel.video_count_text}", else: nil),
-      if(channel.description, do: "Description: #{String.slice(channel.description, 0, 200)}", else: nil)
+      if(channel.description, do: "Description: #{String.slice(channel.description, 0, @description_truncation_limit)}", else: nil)
     ]
     
     parts

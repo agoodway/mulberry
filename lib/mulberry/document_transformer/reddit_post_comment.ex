@@ -20,7 +20,13 @@ defmodule Mulberry.DocumentTransformer.RedditPostComment do
     top_comments_text = doc.comments
     |> Enum.take(5)
     |> Enum.map_join("\n\n", fn comment -> 
-      "#{comment.author}: #{String.slice(comment.body, 0, 200)}"
+      truncated_body = 
+        if String.length(comment.body) > 200 do
+          String.slice(comment.body, 0, 200) <> "..."
+        else
+          comment.body
+        end
+      "#{comment.author}: #{truncated_body}"
     end)
     
     case Text.summarize(top_comments_text, opts) do

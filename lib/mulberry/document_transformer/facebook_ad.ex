@@ -8,6 +8,8 @@ defmodule Mulberry.DocumentTransformer.FacebookAd do
 
   alias Mulberry.Text
 
+  @title_truncation_limit 50
+
   @impl true
   def transform(ad, transformation, opts \\ [])
 
@@ -66,7 +68,7 @@ defmodule Mulberry.DocumentTransformer.FacebookAd do
     preview = body_text
               |> String.split(~r/[.!?]/, parts: 2)
               |> List.first()
-              |> String.slice(0, 50)
+              |> String.slice(0, @title_truncation_limit)
     
     "#{page_name}: #{preview}"
   end
