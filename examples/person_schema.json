@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Full name of the person"
+    },
+    "age": {
+      "type": "number",
+      "description": "Age in years"
+    },
+    "occupation": {
+      "type": "string",
+      "description": "Job title or profession"
+    },
+    "company": {
+      "type": "string",
+      "description": "Company or organization name"
+    },
+    "location": {
+      "type": "string",
+      "description": "City or location"
+    }
+  }
+}

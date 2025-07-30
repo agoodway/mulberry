@@ -10,6 +10,7 @@ defmodule Mulberry.Document.WebPage do
           markdown: String.t(),
           summary: String.t(),
           keywords: list(),
+          extracted_data: list(map()) | nil,
           meta: list(),
           type: String.t() | nil,
           network: String.t() | nil
@@ -22,6 +23,7 @@ defmodule Mulberry.Document.WebPage do
             markdown: nil,
             summary: nil,
             keywords: [],
+            extracted_data: nil,
             meta: [],
             type: nil,
             network: nil

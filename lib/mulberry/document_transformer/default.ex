@@ -48,6 +48,23 @@ defmodule Mulberry.DocumentTransformer.Default do
     end
   end
 
+  def transform(document, :extract, opts) do
+    # Extract structured data using provided schema
+    schema = Keyword.get(opts, :schema)
+    
+    if is_nil(schema) do
+      {:error, {:missing_required_option, :schema}, document}
+    else
+      with {:ok, text} <- get_document_text(document),
+           {:ok, extracted_data} <- Text.extract(text, opts) do
+        {:ok, Map.put(document, :extracted_data, extracted_data)}
+      else
+        {:error, :no_text_field} -> {:error, :not_loaded, document}
+        {:error, reason} -> {:error, reason, document}
+      end
+    end
+  end
+
   def transform(document, transformation, _opts) do
     {:error, {:unsupported_transformation, transformation}, document}
   end

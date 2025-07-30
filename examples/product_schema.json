@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "properties": {
+    "product_name": {
+      "type": "string",
+      "description": "Name of the product"
+    },
+    "price": {
+      "type": "number",
+      "description": "Price in USD"
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of product features"
+    },
+    "category": {
+      "type": "string",
+      "description": "Product category"
+    }
+  }
+}

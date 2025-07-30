@@ -23,9 +23,11 @@ defprotocol Mulberry.Document do
     - `:summary` - Generate a summary of the document
     - `:keywords` - Extract keywords from the document
     - `:title` - Generate a title for the document
+    - `:extract` - Extract structured data based on a schema
 
   ## Options
     - `:transformer` - Module implementing DocumentTransformer behavior (default: DocumentTransformer.Default)
+    - `:schema` - JSON schema for data extraction (required for `:extract` transformation)
     - Additional options are passed to the transformer
   """
   @spec transform(t, atom(), Keyword.t()) :: {:ok, t} | {:error, any(), t}

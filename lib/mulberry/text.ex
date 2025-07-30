@@ -284,4 +284,75 @@ defmodule Mulberry.Text do
     |> TextClassificationChain.new!()
     |> TextClassificationChain.evaluate()
   end
+
+  @doc """
+  Extracts structured data from text using a language model based on a provided schema.
+
+  ## Options
+    * `:schema` - JSON schema defining the structure to extract (required)
+    * `:provider` - The LLM provider to use (e.g., :openai, :anthropic, :google)
+    * `:model` - Override the default model for the provider
+    * `:temperature` - Override the temperature setting
+    * `:max_tokens` - Override the max tokens setting
+    * `:api_key` - Override the API key
+    * `:system_message` - Custom system message to override the default
+    * `:llm` - A pre-configured LLM instance (for backward compatibility)
+    * `:verbose` - Enable verbose logging for debugging (default: false)
+
+  ## Examples
+
+      # Extract person information
+      schema = %{
+        type: "object",
+        properties: %{
+          person_name: %{type: "string"},
+          person_age: %{type: "number"},
+          occupation: %{type: "string"}
+        }
+      }
+      
+      text = "John Smith is a 32-year-old software engineer."
+      
+      {:ok, data} = Mulberry.Text.extract(text, schema: schema)
+      # Returns: [%{"person_name" => "John Smith", "person_age" => 32, "occupation" => "software engineer"}]
+      
+      # Extract multiple instances
+      text = "John is 30 and works as a teacher. Jane is 25 and is a doctor."
+      {:ok, data} = Mulberry.Text.extract(text, schema: schema)
+      # Returns multiple extracted instances
+  """
+  @spec extract(String.t(), Keyword.t()) :: {:ok, list(map())} | {:error, any()}
+  def extract(text, opts \\ []) do
+    alias Mulberry.Chains.DataExtractionChain
+
+    # Ensure schema is provided
+    schema = Keyword.get(opts, :schema)
+    if is_nil(schema) do
+      raise ArgumentError, "You must provide :schema option defining the data structure to extract"
+    end
+
+    # Get LLM configuration
+    llm =
+      case Keyword.get(opts, :llm) do
+        nil ->
+          # Use new configuration system
+          case Config.get_llm(:extract, opts) do
+            {:ok, llm} -> llm
+            {:error, reason} -> raise "Failed to create LLM: #{inspect(reason)}"
+          end
+
+        llm ->
+          # Use provided LLM instance for backward compatibility
+          llm
+      end
+
+    # Extract options for the chain
+    chain_opts = [
+      system_message: Keyword.get(opts, :system_message),
+      verbose: Keyword.get(opts, :verbose, false)
+    ]
+    |> Enum.filter(fn {_k, v} -> v != nil end)
+
+    DataExtractionChain.run(llm, schema, text, chain_opts)
+  end
 end

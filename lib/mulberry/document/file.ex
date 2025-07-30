@@ -9,11 +9,12 @@ defmodule Mulberry.Document.File do
           summary: String.t(),
           keywords: list(),
           title: String.t(),
+          extracted_data: list(map()) | nil,
           mime: String.t(),
           meta: list()
         }
 
-  defstruct path: nil, contents: nil, summary: nil, keywords: [], title: nil, mime: nil, meta: []
+  defstruct path: nil, contents: nil, summary: nil, keywords: [], title: nil, extracted_data: nil, mime: nil, meta: []
 
   @doc """
   Creates a new File document struct with the given attributes.
