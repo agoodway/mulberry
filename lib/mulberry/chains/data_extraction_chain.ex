@@ -84,12 +84,20 @@ defmodule Mulberry.Chains.DataExtractionChain do
     verbose = Keyword.get(opts, :verbose, false)
     
     with {:ok, extract_function} <- build_extract_function(schema),
-         {:ok, chain} <- build_chain(llm, system_message, extract_function, verbose),
-         {:ok, updated_chain} <- LLMChain.run(chain, text: text, mode: :invoke_tools) do
+         {:ok, chain} <- build_chain(llm, system_message, extract_function, text, verbose) do
       
-      case extract_results(updated_chain) do
-        {:ok, results} -> {:ok, results}
-        {:error, reason} -> {:error, reason}
+      case LLMChain.run(chain) do
+        {:ok, updated_chain, _response} ->
+          case extract_results(updated_chain) do
+            {:ok, results} -> {:ok, results}
+            {:error, reason} -> {:error, reason}
+          end
+          
+        {:error, _updated_chain, reason} ->
+          {:error, reason}
+          
+        other ->
+          {:error, {:unexpected_response, other}}
       end
     else
       {:error, reason} -> {:error, reason}
@@ -123,9 +131,13 @@ defmodule Mulberry.Chains.DataExtractionChain do
     |> validate_required([:llm, :schema, :text])
   end
   
+  defp build_extract_function(%Function{} = function) do
+    {:ok, function}
+  end
+  
   defp build_extract_function(schema) when is_map(schema) do
-    properties = Map.get(schema, "properties", schema[:properties] || %{})
-    required = Map.get(schema, "required", schema[:required] || [])
+    properties = Map.get(schema, "properties", Map.get(schema, :properties, %{}))
+    required = Map.get(schema, "required", Map.get(schema, :required, []))
     
     # Create a simple function definition that will be called by the LLM
     # LangChain expects functions to have arity of 2 (args, context)
@@ -159,28 +171,28 @@ defmodule Mulberry.Chains.DataExtractionChain do
     {:ok, function}
   end
   
-  defp build_extract_function(%Function{} = function) do
-    {:ok, function}
-  end
-  
   defp build_extract_function(_) do
     {:error, "Schema must be a map or Function struct"}
   end
   
-  defp build_chain(llm, system_message, extract_function, verbose) do
+  defp build_chain(llm, system_message, extract_function, text, verbose) do
     messages = [
       Message.new_system!(system_message),
-      Message.new_user!("Extract information from the following text:\n\n<%= @text %>")
+      Message.new_user!("Extract information from the following text:\n\n#{text}")
     ]
     
-    chain = %{
-      llm: llm,
-      messages: messages,
-      functions: [extract_function],
-      verbose: verbose
-    }
+    if verbose do
+      Logger.info("Building chain with #{length(messages)} messages")
+      Logger.info("Text length: #{String.length(text)} characters")
+    end
     
-    LLMChain.new(chain)
+    chain = 
+      %{llm: llm, verbose: verbose}
+      |> LLMChain.new!()
+      |> LLMChain.add_messages(messages)
+      |> LLMChain.add_tools([extract_function])
+    
+    {:ok, chain}
   end
   
   defp extract_results(chain) do
