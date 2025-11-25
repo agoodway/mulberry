@@ -29,3 +29,12 @@ mulberry-*.tar
 /tmp/
 
 .scratchpad
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Generated JSON files from mix tasks
+business_listings.json
+*.json
