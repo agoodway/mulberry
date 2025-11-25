@@ -6,10 +6,117 @@ This document provides comprehensive information about all custom Mix tasks avai
 
 Mulberry provides several Mix tasks for common operations:
 
+- `mix business_listings` - Fetch business listings from DataForSEO and save to JSON
 - `mix fetch_url` - Fetch and process web pages
 - `mix search` - Search various providers (Brave, Google, Reddit, etc.)
 - `mix text` - Text processing operations (summarization, classification, etc.)
 - `mix research` - Conduct comprehensive research on topics
+
+## Task Reference
+
+### `mix business_listings`
+
+Fetches business listings from Google Maps via the DataForSEO Business Listings API and saves results to a JSON file.
+
+#### Usage
+```bash
+mix business_listings [options]
+```
+
+#### Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--categories` | `-c` | Comma-separated category IDs (e.g., "pizza_restaurant,italian_restaurant") | - |
+| `--location` | `-l` | Location coordinate "latitude,longitude,radius_km" | - |
+| `--title` | `-t` | Business title/name to search for (max 200 chars) | - |
+| `--description` | `-d` | Business description to search for (max 200 chars) | - |
+| `--claimed` | - | Only include Google Maps verified businesses (flag) | false |
+| `--filters` | `-f` | Filter condition "field,operator,value" (repeatable, max 8) | - |
+| `--order-by` | `-s` | Sort rule "field,direction" (repeatable, max 3) | - |
+| `--limit` | `-n` | Maximum number of results (max: 1000) | 100 |
+| `--offset` | - | Pagination offset for results | - |
+| `--output` | `-o` | Output JSON file path | business_listings.json |
+
+#### Filter Operators
+
+Valid operators for `--filters`:
+- `<`, `<=`, `>`, `>=` - Numeric comparisons
+- `=`, `!=` - Equality checks
+- `like`, `not_like` - Pattern matching
+- `regex`, `not_regex` - Regular expression matching
+
+#### Common Category IDs
+
+- `restaurant` - Restaurants (general)
+- `pizza_restaurant` - Pizza restaurants
+- `italian_restaurant` - Italian restaurants
+- `cafe` - Cafes
+- `coffee_shop` - Coffee shops
+- `bar` - Bars
+- `hotel` - Hotels
+- `gas_station` - Gas stations
+- `grocery_store` - Grocery stores
+- `pharmacy` - Pharmacies
+
+#### Output Format
+
+The JSON file contains:
+- `total_count` - Total matching businesses
+- `fetched_count` - Number of businesses in this result
+- `fetched_at` - ISO 8601 timestamp
+- `elapsed_ms` - Time taken in milliseconds
+- `search_params` - Search parameters used
+- `items` - Array of business listing objects
+
+Each business listing includes: title, description, category, address, phone, website, ratings, hours, location coordinates, and more.
+
+#### Examples
+
+```bash
+# Search for pizza restaurants in NYC (5km radius)
+mix business_listings -c pizza_restaurant -l "40.7128,-74.0060,5"
+
+# Search by business name in Seattle
+mix business_listings -t "Starbucks" -l "47.6062,-122.3321,20"
+
+# High-rated restaurants in LA with filters
+mix business_listings \
+  -c restaurant \
+  -l "34.0522,-118.2437,10" \
+  -f "rating.value,>,4.5" \
+  -f "rating.votes_count,>,100" \
+  -s "rating.value,desc" \
+  -n 50 \
+  -o la_restaurants.json
+
+# Multiple categories with ordering
+mix business_listings \
+  -c "pizza_restaurant,italian_restaurant" \
+  -l "41.8781,-87.6298,8" \
+  -s "rating.value,desc" \
+  -s "rating.votes_count,desc" \
+  -n 200
+
+# Only verified businesses
+mix business_listings -c cafe -l "37.7749,-122.4194,3" --claimed
+
+# Search with title and complex filters
+mix business_listings \
+  -t "Pizza" \
+  -l "40.7128,-74.0060,10" \
+  -f "rating.value,>=,4.0" \
+  -f "is_claimed,=,true" \
+  --limit 100
+```
+
+#### Environment Variables
+
+Required for this task:
+- `DATAFORSEO_USERNAME` - Your DataForSEO API username
+- `DATAFORSEO_PASSWORD` - Your DataForSEO API password
+
+Get credentials at: https://app.dataforseo.com/api-access
 
 ## Task Reference
 
@@ -289,6 +396,8 @@ mix research "elixir tips" --search-modules '[
 
 Several mix tasks require API keys to be set as environment variables:
 
+- `DATAFORSEO_USERNAME` - Required for DataForSEO Business Listings functionality
+- `DATAFORSEO_PASSWORD` - Required for DataForSEO Business Listings functionality
 - `OPENAI_API_KEY` - Required for AI features (summarization, title generation, research)
 - `BRAVE_API_KEY` - Required for Brave search functionality
 - `SCRAPECREATORS_API_KEY` - Required for Google, Reddit, Facebook Ads, and YouTube search
@@ -320,6 +429,10 @@ mix text summarize --file article.txt
 # Search for content and research a topic based on results
 mix search "latest AI developments" --save results.json
 mix research "AI developments 2024" --verbose
+
+# Fetch business listings for multiple locations
+mix business_listings -c restaurant -l "40.7128,-74.0060,5" -o nyc.json
+mix business_listings -c restaurant -l "34.0522,-118.2437,5" -o la.json
 ```
 
 ### Scripting
@@ -332,5 +445,30 @@ topics=("quantum computing" "renewable energy" "space exploration")
 
 for topic in "${topics[@]}"; do
   mix research "$topic" --format markdown --save "research_${topic// /_}.md"
+done
+```
+
+```bash
+#!/bin/bash
+# Fetch business listings for multiple cities
+
+cities=(
+  "New York:40.7128,-74.0060,10"
+  "Los Angeles:34.0522,-118.2437,10"
+  "Chicago:41.8781,-87.6298,10"
+)
+
+for city_data in "${cities[@]}"; do
+  city_name="${city_data%%:*}"
+  coords="${city_data#*:}"
+  filename="${city_name// /_}_pizza.json"
+
+  mix business_listings \
+    -c pizza_restaurant \
+    -l "$coords" \
+    -f "rating.value,>,4.0" \
+    -s "rating.value,desc" \
+    -n 50 \
+    -o "$filename"
 done
 ```
