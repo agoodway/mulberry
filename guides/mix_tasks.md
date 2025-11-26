@@ -7,6 +7,7 @@ This document provides comprehensive information about all custom Mix tasks avai
 Mulberry provides several Mix tasks for common operations:
 
 - `mix business_listings` - Fetch business listings from DataForSEO and save to JSON
+- `mix google_reviews` - Fetch Google reviews for businesses and save to JSON
 - `mix fetch_url` - Fetch and process web pages
 - `mix search` - Search various providers (Brave, Google, Reddit, etc.)
 - `mix text` - Text processing operations (summarization, classification, etc.)
@@ -517,3 +518,50 @@ for city_data in "${cities[@]}"; do
     -o "$filename"
 done
 ```
+### `mix google_reviews`
+
+Fetches Google reviews for a business from DataForSEO API and saves to JSON.
+
+#### Usage
+```bash
+mix google_reviews [options]
+```
+
+#### Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--keyword` | `-k` | Business name (requires --location) | - |
+| `--cid` | `-c` | Google Customer ID (from business_listings) | - |
+| `--place-id` | `-p` | Google Place ID | - |
+| `--location` | `-l` | Location for keyword search | - |
+| `--depth` | `-n` | Number of reviews (max: 4490 regular / 1000 extended) | 10/20 |
+| `--sort-by` | `-s` | newest, highest_rating, lowest_rating, relevant | relevant |
+| `--language` | `-g` | Language code | en |
+| `--type` | `-t` | regular or extended (multi-platform) | regular |
+| `--output` | `-o` | Output JSON file | google_reviews.json |
+
+#### Examples
+
+```bash
+# Fetch reviews using CID from business listing
+mix google_reviews --cid "10179360708466590899" --depth 100 --sort-by newest
+
+# Fetch extended reviews (multi-platform: Google + Yelp + TripAdvisor)
+mix google_reviews -c "12345" --type extended --depth 100
+
+# Search by business name
+mix google_reviews -k "Joe's Pizza" -l "New York" -n 50
+
+# Combined workflow: fetch businesses then their reviews
+mix business_listings -t "Starbucks" -l "47.6062,-122.3321,20" -o businesses.json
+# Extract CID from JSON, then:
+mix google_reviews --cid "10179360708466590899" --depth 200 -o starbucks_reviews.json
+```
+
+#### Environment Variables
+
+Same as business_listings:
+- `DATAFORSEO_USERNAME`
+- `DATAFORSEO_PASSWORD`
+
