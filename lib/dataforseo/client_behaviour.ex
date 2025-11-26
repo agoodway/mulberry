@@ -90,5 +90,17 @@ defmodule DataForSEO.ClientBehaviour do
   """
   @callback is_live_endpoint?() :: boolean()
 
-  @optional_callbacks validate_params: 1, is_live_endpoint?: 0
+  @doc """
+  Optional callback to specify the result endpoint type for task_get.
+
+  Different DataForSEO endpoints use different result endpoint formats:
+  - Some use task_get/advanced (default)
+  - Others just use task_get (e.g., Google Reviews)
+
+  ## Returns
+    - The endpoint suffix string (e.g., "advanced", "regular", or "" for none)
+  """
+  @callback result_endpoint() :: String.t()
+
+  @optional_callbacks validate_params: 1, is_live_endpoint?: 0, result_endpoint: 0
 end

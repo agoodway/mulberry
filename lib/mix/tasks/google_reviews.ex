@@ -101,11 +101,18 @@ defmodule Mix.Tasks.GoogleReviews do
     |> maybe_put(:sort_by, opts[:sort_by])
     |> maybe_put(:language_code, opts[:language])
 
-    # Only add location if using keyword (CID/place_id have implicit location)
-    if opts[:keyword] && opts[:location] do
-      Map.put(params, :location_name, opts[:location])
-    else
-      params
+    # Add location if provided, or use default for CID/place_id
+    cond do
+      opts[:location] ->
+        Map.put(params, :location_name, opts[:location])
+
+      opts[:cid] || opts[:place_id] ->
+        # CID and place_id still require a location parameter per DataForSEO API
+        # Use a default location code that covers United States
+        Map.put(params, :location_code, 2840)
+
+      true ->
+        params
     end
   end
 
@@ -178,7 +185,8 @@ defmodule Mix.Tasks.GoogleReviews do
       Mix.raise("At least one business identifier required (--keyword, --cid, or --place-id)")
     end
 
-    if params[:keyword] && !params[:location_name] do
+    # Keyword requires explicit location
+    if params[:keyword] && !params[:location_name] && !params[:location_code] && !params[:location_coordinate] do
       Mix.raise("--location required when using --keyword")
     end
 
@@ -194,7 +202,12 @@ defmodule Mix.Tasks.GoogleReviews do
       params[:keyword] -> Mix.shell().info("Keyword: #{params[:keyword]}")
     end
 
-    if params[:location_name], do: Mix.shell().info("Location: #{params[:location_name]}")
+    cond do
+      params[:location_name] -> Mix.shell().info("Location: #{params[:location_name]}")
+      params[:location_code] -> Mix.shell().info("Location Code: #{params[:location_code]}")
+      params[:location_coordinate] -> Mix.shell().info("Location Coordinate: #{params[:location_coordinate]}")
+      true -> nil
+    end
 
     depth = opts[:depth] || (if opts[:type] == "extended", do: 20, else: 10)
     Mix.shell().info("Depth: #{depth}")

@@ -398,7 +398,9 @@ defmodule DataForSEO.TaskManager do
   end
 
   defp fetch_single_result(task_id, task_type, task_module) do
-    case Client.fetch_task_results(task_type, task_id) do
+    endpoint = get_result_endpoint(task_module)
+
+    case Client.fetch_task_results(task_type, task_id, endpoint) do
       {:ok, response} ->
         case task_module.parse_task_results(response) do
           {:ok, parsed} -> {:ok, {task_id, parsed}}
@@ -407,6 +409,14 @@ defmodule DataForSEO.TaskManager do
 
       error ->
         error
+    end
+  end
+
+  defp get_result_endpoint(task_module) do
+    if function_exported?(task_module, :result_endpoint, 0) do
+      task_module.result_endpoint()
+    else
+      "advanced"
     end
   end
 

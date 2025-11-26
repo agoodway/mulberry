@@ -97,6 +97,9 @@ defmodule DataForSEO.Tasks.ExtendedGoogleReviews do
   def task_type, do: "business_data/google/extended_reviews"
 
   @impl true
+  def result_endpoint, do: ""
+
+  @impl true
   def build_task_payload(params) do
     [
       %{

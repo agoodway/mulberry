@@ -82,15 +82,20 @@ defmodule DataForSEO.Client do
   ## Parameters
     - `task_type` - The type of task (e.g., "serp/google/events")
     - `task_id` - The ID of the task to fetch
-    - `endpoint` - The result endpoint (e.g., "advanced", "regular", "html")
-    
+    - `endpoint` - The result endpoint (e.g., "advanced", "regular", "html", or "" for none)
+
   ## Returns
     - `{:ok, response}` - Task results
     - `{:error, reason}` - Error details
   """
   @spec fetch_task_results(String.t(), String.t(), String.t()) :: {:ok, map()} | error()
   def fetch_task_results(task_type, task_id, endpoint \\ "advanced") do
-    url = "#{@base_url}/#{task_type}/task_get/#{endpoint}/#{task_id}"
+    url =
+      if endpoint == "" do
+        "#{@base_url}/#{task_type}/task_get/#{task_id}"
+      else
+        "#{@base_url}/#{task_type}/task_get/#{endpoint}/#{task_id}"
+      end
 
     with {:ok, auth} <- get_auth() do
       get_with_retry(url, auth)
