@@ -153,7 +153,7 @@ defmodule DataForSEO.TaskManagerTest do
          }}
       end)
 
-      expect(Client, :fetch_task_results, fn _task_type, "task123" ->
+      expect(Client, :fetch_task_results, fn _task_type, "task123", _endpoint ->
         {:ok,
          %{
            "tasks" => [
@@ -208,7 +208,7 @@ defmodule DataForSEO.TaskManagerTest do
         end
       end)
 
-      expect(Client, :fetch_task_results, fn _task_type, "task123" ->
+      expect(Client, :fetch_task_results, fn _task_type, "task123", _endpoint ->
         {:ok,
          %{
            "tasks" => [
@@ -279,7 +279,7 @@ defmodule DataForSEO.TaskManagerTest do
          }}
       end)
 
-      expect(Client, :fetch_task_results, 2, fn _task_type, task_id ->
+      expect(Client, :fetch_task_results, 2, fn _task_type, task_id, _endpoint ->
         {:ok,
          %{
            "tasks" => [
@@ -323,7 +323,7 @@ defmodule DataForSEO.TaskManagerTest do
          }}
       end)
 
-      expect(Client, :fetch_task_results, 2, fn _task_type, "task123" ->
+      expect(Client, :fetch_task_results, 2, fn _task_type, "task123", _endpoint ->
         case Process.get(:fetch_attempt, 0) do
           0 ->
             Process.put(:fetch_attempt, 1)
@@ -372,7 +372,7 @@ defmodule DataForSEO.TaskManagerTest do
          }}
       end)
 
-      expect(Client, :fetch_task_results, fn _task_type, "task123" ->
+      expect(Client, :fetch_task_results, fn _task_type, "task123", _endpoint ->
         {:ok,
          %{
            "tasks" => [
@@ -424,7 +424,7 @@ defmodule DataForSEO.TaskManagerTest do
          }}
       end)
 
-      expect(Client, :fetch_task_results, 2, fn _task_type, _task_id ->
+      expect(Client, :fetch_task_results, 2, fn _task_type, _task_id, _endpoint ->
         {:ok,
          %{
            "tasks" => [

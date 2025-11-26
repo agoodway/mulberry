@@ -196,20 +196,10 @@ defmodule Mix.Tasks.GoogleReviews do
   defp display_search_info(params, opts) do
     Mix.shell().info("\n=== Search Parameters ===")
 
-    cond do
-      params[:cid] -> Mix.shell().info("CID: #{params[:cid]}")
-      params[:place_id] -> Mix.shell().info("Place ID: #{params[:place_id]}")
-      params[:keyword] -> Mix.shell().info("Keyword: #{params[:keyword]}")
-    end
+    display_identifier(params)
+    display_location(params)
 
-    cond do
-      params[:location_name] -> Mix.shell().info("Location: #{params[:location_name]}")
-      params[:location_code] -> Mix.shell().info("Location Code: #{params[:location_code]}")
-      params[:location_coordinate] -> Mix.shell().info("Location Coordinate: #{params[:location_coordinate]}")
-      true -> nil
-    end
-
-    depth = opts[:depth] || (if opts[:type] == "extended", do: 20, else: 10)
+    depth = opts[:depth] || default_depth(opts[:type])
     Mix.shell().info("Depth: #{depth}")
 
     if params[:sort_by], do: Mix.shell().info("Sort by: #{params[:sort_by]}")
@@ -219,6 +209,26 @@ defmodule Mix.Tasks.GoogleReviews do
 
     Mix.shell().info("========================\n")
   end
+
+  defp display_identifier(params) do
+    cond do
+      params[:cid] -> Mix.shell().info("CID: #{params[:cid]}")
+      params[:place_id] -> Mix.shell().info("Place ID: #{params[:place_id]}")
+      params[:keyword] -> Mix.shell().info("Keyword: #{params[:keyword]}")
+    end
+  end
+
+  defp display_location(params) do
+    cond do
+      params[:location_name] -> Mix.shell().info("Location: #{params[:location_name]}")
+      params[:location_code] -> Mix.shell().info("Location Code: #{params[:location_code]}")
+      params[:location_coordinate] -> Mix.shell().info("Location Coordinate: #{params[:location_coordinate]}")
+      true -> nil
+    end
+  end
+
+  defp default_depth("extended"), do: 20
+  defp default_depth(_), do: 10
 
   defp wait_for_results(ref, pid, start_time) do
     receive do
