@@ -93,14 +93,20 @@ defmodule Mix.Tasks.GoogleReviews do
   """
   @spec build_task_params(keyword()) :: map()
   def build_task_params(opts) do
-    %{}
+    params = %{}
     |> maybe_put(:keyword, opts[:keyword])
     |> maybe_put(:cid, opts[:cid])
     |> maybe_put(:place_id, opts[:place_id])
-    |> maybe_put(:location_name, opts[:location])
     |> maybe_put(:depth, opts[:depth])
     |> maybe_put(:sort_by, opts[:sort_by])
     |> maybe_put(:language_code, opts[:language])
+
+    # Only add location if using keyword (CID/place_id have implicit location)
+    if opts[:keyword] && opts[:location] do
+      Map.put(params, :location_name, opts[:location])
+    else
+      params
+    end
   end
 
   @doc """
