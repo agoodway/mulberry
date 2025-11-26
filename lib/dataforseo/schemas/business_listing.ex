@@ -306,4 +306,111 @@ defmodule DataForSEO.Schemas.BusinessListing do
       |> String.slice(0..31)
     end
   end
+
+  @doc """
+  Fetches Google reviews for this business listing.
+
+  Starts an async task to fetch reviews using this business's CID or place_id.
+  Prefers CID if available (more stable and lower cost for extended reviews).
+
+  ## Parameters
+
+  - `listing` - The BusinessListing struct
+  - `opts` - Options keyword list (optional)
+
+  ## Options
+
+  - `:depth` - Number of reviews to fetch (default: 10, max: 4490)
+  - `:sort_by` - Sort order: "newest", "highest_rating", "lowest_rating", "relevant"
+  - `:language_code` - Language code (default: "en")
+  - `:callback` - Function called when results ready
+  - `:extended` - Use extended reviews (default: false)
+
+  ## Returns
+
+  - `{:ok, pid}` - Task manager PID
+  - `{:error, reason}` - Error if task cannot be started
+
+  ## Examples
+
+      iex> business = %BusinessListing{cid: "12345"}
+      iex> {:ok, pid} = BusinessListing.fetch_reviews(business, depth: 100, sort_by: "newest")
+
+      iex> business = %BusinessListing{place_id: "ChIJ123"}
+      iex> BusinessListing.fetch_reviews(business,
+      ...>   depth: 50,
+      ...>   callback: fn {:ok, reviews} -> IO.inspect(reviews.reviews_count) end
+      ...> )
+
+  """
+  @spec fetch_reviews(t(), keyword()) :: {:ok, pid()} | {:error, term()}
+  def fetch_reviews(listing, opts \\ []) do
+    extended = Keyword.get(opts, :extended, false)
+
+    task_module =
+      if extended do
+        DataForSEO.Tasks.ExtendedGoogleReviews
+      else
+        DataForSEO.Tasks.GoogleReviews
+      end
+
+    task_params = build_reviews_params(listing, opts)
+
+    # Extract supervisor options (callback, poll_interval, timeout, task_id)
+    supervisor_opts = Keyword.take(opts, [:callback, :poll_interval_ms, :timeout_ms, :task_id])
+
+    DataForSEO.Supervisor.start_task(task_module, task_params, supervisor_opts)
+  end
+
+  @doc """
+  Fetches extended Google reviews (multi-platform) for this business listing.
+
+  Convenience function equivalent to `fetch_reviews(listing, [extended: true] ++ opts)`.
+  Returns reviews from Google plus other platforms like TripAdvisor, Yelp, etc.
+
+  ## Parameters
+
+  - `listing` - The BusinessListing struct
+  - `opts` - Options keyword list (optional)
+
+  ## Options
+
+  Same as `fetch_reviews/2` (depth, sort_by, language_code, callback)
+
+  ## Returns
+
+  - `{:ok, pid}` - Task manager PID
+  - `{:error, reason}` - Error if task cannot be started
+
+  ## Examples
+
+      iex> business = %BusinessListing{cid: "12345"}
+      iex> {:ok, pid} = BusinessListing.fetch_extended_reviews(business, depth: 100)
+
+  """
+  @spec fetch_extended_reviews(t(), keyword()) :: {:ok, pid()} | {:error, term()}
+  def fetch_extended_reviews(listing, opts \\ []) do
+    fetch_reviews(listing, Keyword.put(opts, :extended, true))
+  end
+
+  # Private helper for building reviews task params
+  defp build_reviews_params(listing, opts) do
+    # Prefer CID (more stable, lower cost for extended reviews)
+    base_params =
+      cond do
+        listing.cid -> %{cid: listing.cid}
+        listing.place_id -> %{place_id: listing.place_id}
+        true -> %{}
+      end
+
+    # Add optional parameters
+    base_params
+    |> maybe_put_param(:depth, opts[:depth])
+    |> maybe_put_param(:sort_by, opts[:sort_by])
+    |> maybe_put_param(:language_code, opts[:language_code])
+    |> maybe_put_param(:tag, opts[:tag])
+  end
+
+  defp maybe_put_param(map, _key, nil), do: map
+  defp maybe_put_param(map, key, value), do: Map.put(map, key, value)
 end
