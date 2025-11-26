@@ -66,6 +66,7 @@ defmodule DataForSEO.Schemas.BusinessListingsResult do
       attrs
       |> Map.get("items", [])
       |> Enum.map(&BusinessListing.new/1)
+      |> Enum.map(&BusinessListing.with_id/1)
 
     %__MODULE__{
       total_count: attrs["total_count"],

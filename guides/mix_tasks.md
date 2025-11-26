@@ -69,7 +69,52 @@ The JSON file contains:
 - `search_params` - Search parameters used
 - `items` - Array of business listing objects
 
-Each business listing includes: title, description, category, address, phone, website, ratings, hours, location coordinates, and more.
+Each business listing includes:
+- `unique_id` - **Generated unique identifier** (uses Google CID by default)
+- Basic info: title, description, category, category_ids
+- Contact: phone, url, domain, address, address_info
+- Location: latitude, longitude, place_id, cid
+- Ratings: rating (value, votes_count), rating_distribution
+- Operations: work_time, popular_times
+- Media: logo, main_image, total_photos
+- Verification: is_claimed
+- Metadata: last_updated_time, first_seen
+
+#### Unique ID Generation
+
+Business listings automatically include a `unique_id` field for database operations. The ID generation strategy is configurable:
+
+**Default Strategy (CID):**
+Uses Google's Customer ID Number - the most stable identifier that persists across business moves, name changes, and reopenings.
+
+**Configuration (in `config/config.exs`):**
+```elixir
+config :mulberry, DataForSEO.Schemas.BusinessListing,
+  id_strategy: :cid,              # Options: :cid, :place_id, :composite_hash
+  composite_fields: [:cid, :place_id],  # For :composite_hash strategy
+  id_prefix: nil                  # Optional prefix (e.g., "bl_")
+```
+
+**Alternative Strategies:**
+- `:cid` - Use Google CID (recommended, most stable)
+- `:place_id` - Use Google Place ID (can become obsolete after 12 months)
+- `:composite_hash` - SHA256 hash of multiple fields (maximum uniqueness)
+
+**Database Integration Example:**
+```elixir
+# The unique_id can be used directly as a primary key or for upserts
+{:ok, file} = File.read!("business_listings.json")
+data = Jason.decode!(file)
+
+Enum.each(data["items"], fn item ->
+  MyApp.Repo.insert!(
+    %MyApp.BusinessListing{},
+    item,
+    on_conflict: :replace_all,
+    conflict_target: :unique_id
+  )
+end)
+```
 
 #### Examples
 
