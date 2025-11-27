@@ -9,6 +9,7 @@ Mulberry provides several Mix tasks for common operations:
 - `mix business_listings` - Fetch business listings from DataForSEO and save to JSON
 - `mix google_reviews` - Fetch Google reviews for businesses and save to JSON
 - `mix google_questions` - Fetch Google Questions and Answers for businesses and save to JSON
+- `mix google_jobs` - Fetch Google Jobs SERP results and save to JSON
 - `mix fetch_url` - Fetch and process web pages
 - `mix search` - Search various providers (Brave, Google, Reddit, etc.)
 - `mix text` - Text processing operations (summarization, classification, etc.)

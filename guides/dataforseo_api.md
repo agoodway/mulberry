@@ -334,6 +334,137 @@ Fetch multi-platform reviews (Google + TripAdvisor, Yelp, etc.).
 )
 ```
 
+### GoogleJobs
+
+Fetch job listings from Google Jobs SERP results.
+
+**Module:** `DataForSEO.Tasks.GoogleJobs`
+
+**Type:** Async (polling required)
+
+**Parameters:**
+
+Required:
+- `:keyword` - Job title or search term (max 700 chars)
+
+Location (choose one):
+- `:location_name` - Full location name (e.g., "San Francisco,California,United States")
+- `:location_code` - Numeric location code (e.g., 2840 for USA)
+
+Optional:
+- `:language_code` - Language code (default: "en")
+- `:depth` - Results to fetch (default: 10, max: 200)
+- `:employment_type` - List of types: `["fulltime", "partime", "contractor", "intern"]`
+- `:location_radius` - Search radius in kilometers (max: 300)
+- `:priority` - 1 (normal) or 2 (high, extra cost)
+- `:tag` - User identifier (max 255 chars)
+
+**Example:**
+
+```elixir
+{:ok, pid} = DataForSEO.Supervisor.start_task(
+  DataForSEO.Tasks.GoogleJobs,
+  %{
+    keyword: "elixir developer",
+    location_name: "San Francisco,California,United States",
+    language_code: "en",
+    depth: 50,
+    employment_type: ["fulltime", "contractor"]
+  },
+  callback: fn {:ok, result} ->
+    IO.puts("Keyword: #{result.keyword}")
+    IO.puts("Total jobs: #{GoogleJobsResult.job_count(result)}")
+
+    # Process jobs
+    Enum.each(result.jobs, fn job ->
+      IO.puts("""
+      #{job.title} at #{job.employer_name}
+        Location: #{job.location}
+        Type: #{job.contract_type}
+        Salary: #{job.salary}
+      """)
+    end)
+
+    # Filter by contract type
+    fulltime_jobs = GoogleJobsResult.filter_by_contract_type(result, "Full-time")
+    IO.puts("Full-time positions: #{length(fulltime_jobs)}")
+
+    # Group by employer
+    by_employer = GoogleJobsResult.group_by_employer(result)
+    IO.puts("Employers: #{map_size(by_employer)}")
+  end
+)
+```
+
+**With Location Radius:**
+
+```elixir
+{:ok, pid} = DataForSEO.Supervisor.start_task(
+  DataForSEO.Tasks.GoogleJobs,
+  %{
+    keyword: "software engineer",
+    location_code: 2840,
+    location_radius: 50.0,  # 50km radius
+    depth: 100
+  },
+  callback: &handle_jobs/1
+)
+```
+
+**Result Type:** `DataForSEO.Schemas.GoogleJobsResult`
+
+```elixir
+%GoogleJobsResult{
+  keyword: "elixir developer",
+  location_code: 2840,
+  language_code: "en",
+  se_domain: "google.com",
+  check_url: "https://www.google.com/search?...",
+  datetime: "2025-01-27 12:00:00 +00:00",
+  items_count: 50,
+  type: "jobs",
+  jobs: [GoogleJob.t()]
+}
+
+# Each job:
+%GoogleJob{
+  job_id: "...",
+  title: "Senior Elixir Engineer",
+  employer_name: "Tech Corp",
+  employer_url: "https://...",
+  employer_image_url: "https://...",
+  location: "San Francisco, CA",
+  contract_type: "Full-time",
+  salary: "$120,000 - $180,000 a year",
+  source_name: "LinkedIn",
+  source_url: "https://...",
+  timestamp: "2025-01-27 10:00:00 +00:00",
+  time_ago: "2 days ago",
+  rank_group: 1,
+  rank_absolute: 1,
+  position: 1,
+  xpath: "...",
+  type: "google_jobs_item"
+}
+```
+
+**GoogleJobsResult Helper Functions:**
+
+```elixir
+alias DataForSEO.Schemas.GoogleJobsResult
+
+# Get total job count
+GoogleJobsResult.job_count(result)  # => 50
+
+# Filter by contract type
+fulltime = GoogleJobsResult.filter_by_contract_type(result, "Full-time")
+contract = GoogleJobsResult.filter_by_contract_type(result, "Contract")
+
+# Group by employer
+by_employer = GoogleJobsResult.group_by_employer(result)
+# => %{"Tech Corp" => [job1, job2], "StartupCo" => [job3]}
+```
+
 ### BusinessListings
 
 Search for businesses on Google Maps.
@@ -1420,12 +1551,18 @@ System.get_env("DATAFORSEO_PASSWORD") # Should not be nil
 
 | Module | Type | Description | Max Depth |
 |--------|------|-------------|-----------|
+| `GoogleJobs` | Async | Fetch job listings from Google Jobs | 200 |
 | `GoogleQuestions` | Async | Fetch Q&A from Google Business | 700 |
 | `GoogleReviews` | Async | Fetch Google Maps reviews | 4490 |
 | `ExtendedGoogleReviews` | Async | Multi-platform reviews | 1000 |
 | `BusinessListings` | Live | Search businesses on Google Maps | 1000 |
 
 ### Schema Helper Functions
+
+**GoogleJobsResult:**
+- `job_count/1` - Get total number of jobs
+- `filter_by_contract_type/2` - Filter jobs by contract type
+- `group_by_employer/1` - Group jobs by employer name
 
 **GoogleQuestionsResult:**
 - `total_question_count/1`
