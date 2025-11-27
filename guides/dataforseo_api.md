@@ -334,6 +334,135 @@ Fetch multi-platform reviews (Google + TripAdvisor, Yelp, etc.).
 )
 ```
 
+### GoogleNews
+
+Fetch news articles from Google News SERP results.
+
+**Module:** `DataForSEO.Tasks.GoogleNews`
+
+**Type:** Async (polling required)
+
+**Parameters:**
+
+Required:
+- `:keyword` - News search term (max 700 chars)
+
+Location (choose one):
+- `:location_name` - Full location name (e.g., "United States")
+- `:location_code` - Numeric location code (e.g., 2840 for USA)
+
+Optional:
+- `:language_code` - Language code (default: "en")
+- `:depth` - Results to fetch (default: 10, max: 700)
+- `:os` - Operating system: "windows" (default) or "macos"
+- `:priority` - 1 (normal) or 2 (high priority, additional cost)
+- `:tag` - User identifier (max 255 chars)
+
+**Example:**
+
+```elixir
+{:ok, pid} = DataForSEO.Supervisor.start_task(
+  DataForSEO.Tasks.GoogleNews,
+  %{
+    keyword: "artificial intelligence",
+    location_name: "United States",
+    language_code: "en",
+    depth: 100
+  },
+  callback: fn {:ok, result} ->
+    IO.puts("Keyword: #{result.keyword}")
+    IO.puts("Total news: #{GoogleNewsResult.news_count(result)}")
+
+    # Get recent news
+    recent = GoogleNewsResult.recent_news(result, 24)
+    IO.puts("Last 24 hours: #{length(recent)}")
+
+    # Group by source
+    by_source = GoogleNewsResult.group_by_source(result)
+    IO.puts("Sources: #{map_size(by_source)}")
+
+    # Process news items
+    Enum.each(result.news_items, fn item ->
+      IO.puts("""
+      #{item.title}
+        Source: #{item.source || item.domain}
+        Published: #{item.time_published}
+        #{item.snippet}
+      """)
+    end)
+  end
+)
+```
+
+**With macOS User Agent:**
+
+```elixir
+{:ok, pid} = DataForSEO.Supervisor.start_task(
+  DataForSEO.Tasks.GoogleNews,
+  %{
+    keyword: "technology news",
+    location_code: 2840,
+    os: "macos",
+    depth: 50
+  },
+  callback: &handle_news/1
+)
+```
+
+**Result Type:** `DataForSEO.Schemas.GoogleNewsResult`
+
+```elixir
+%GoogleNewsResult{
+  keyword: "artificial intelligence",
+  location_code: 2840,
+  language_code: "en",
+  se_domain: "google.com",
+  check_url: "https://www.google.com/search?...",
+  datetime: "2025-01-27 12:00:00 +00:00",
+  se_results_count: 5000,
+  items_count: 100,
+  type: "news",
+  news_items: [GoogleNewsItem.t()]
+}
+
+# Each news item:
+%GoogleNewsItem{
+  title: "AI Breakthrough Announced",
+  url: "https://techcrunch.com/article",
+  domain: "techcrunch.com",
+  source: "TechCrunch",
+  snippet: "Major advancement in artificial intelligence...",
+  image_url: "https://...",
+  time_published: "2 hours ago",
+  timestamp: "2025-01-27 10:00:00 +00:00",
+  rank_group: 1,
+  rank_absolute: 1,
+  position: 1,
+  xpath: "...",
+  type: "news_search"
+}
+```
+
+**GoogleNewsResult Helper Functions:**
+
+```elixir
+alias DataForSEO.Schemas.GoogleNewsResult
+
+# Get total news count
+GoogleNewsResult.news_count(result)  # => 100
+
+# Filter by domain
+cnn_news = GoogleNewsResult.filter_by_domain(result, "cnn.com")
+
+# Get recent news (last N hours)
+recent_24h = GoogleNewsResult.recent_news(result, 24)
+recent_7d = GoogleNewsResult.recent_news(result, 168)
+
+# Group by source
+by_source = GoogleNewsResult.group_by_source(result)
+# => %{"CNN" => [item1, item2], "TechCrunch" => [item3]}
+```
+
 ### GoogleJobs
 
 Fetch job listings from Google Jobs SERP results.
@@ -1551,6 +1680,7 @@ System.get_env("DATAFORSEO_PASSWORD") # Should not be nil
 
 | Module | Type | Description | Max Depth |
 |--------|------|-------------|-----------|
+| `GoogleNews` | Async | Fetch news articles from Google News | 700 |
 | `GoogleJobs` | Async | Fetch job listings from Google Jobs | 200 |
 | `GoogleQuestions` | Async | Fetch Q&A from Google Business | 700 |
 | `GoogleReviews` | Async | Fetch Google Maps reviews | 4490 |
@@ -1558,6 +1688,12 @@ System.get_env("DATAFORSEO_PASSWORD") # Should not be nil
 | `BusinessListings` | Live | Search businesses on Google Maps | 1000 |
 
 ### Schema Helper Functions
+
+**GoogleNewsResult:**
+- `news_count/1` - Get total number of news items
+- `filter_by_domain/2` - Filter news by domain
+- `recent_news/2` - Get news from last N hours
+- `group_by_source/1` - Group news by source
 
 **GoogleJobsResult:**
 - `job_count/1` - Get total number of jobs

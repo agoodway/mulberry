@@ -10,6 +10,7 @@ Mulberry provides several Mix tasks for common operations:
 - `mix google_reviews` - Fetch Google reviews for businesses and save to JSON
 - `mix google_questions` - Fetch Google Questions and Answers for businesses and save to JSON
 - `mix google_jobs` - Fetch Google Jobs SERP results and save to JSON
+- `mix google_news` - Fetch Google News SERP results and save to JSON
 - `mix fetch_url` - Fetch and process web pages
 - `mix search` - Search various providers (Brave, Google, Reddit, etc.)
 - `mix text` - Text processing operations (summarization, classification, etc.)
@@ -165,6 +166,70 @@ Required for this task:
 - `DATAFORSEO_PASSWORD` - Your DataForSEO API password
 
 Get credentials at: https://app.dataforseo.com/api-access
+
+### `mix google_news`
+
+Fetches Google News SERP results from DataForSEO API and saves to JSON.
+
+#### Usage
+```bash
+mix google_news [options]
+```
+
+#### Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--keyword` | `-k` | News search term (required, max 700 chars) | - |
+| `--location-name` | `-l` | Full location name (e.g., "United States") | - |
+| `--location-code` | - | Numeric location code (e.g., 2840 for USA) | - |
+| `--language` | `-g` | Language code | en |
+| `--depth` | `-d` | Number of results (max: 700) | 10 |
+| `--os` | - | Operating system: windows or macos | windows |
+| `--priority` | `-p` | Task priority: 1 (normal) or 2 (high, extra cost) | 1 |
+| `--tag` | `-t` | User identifier (max 255 chars) | - |
+| `--output` | `-o` | Output JSON file | google_news.json |
+
+#### Key Details
+
+- **Location**: Either `--location-name` or `--location-code` is required
+- **Depth**: Up to 700 news results per search (highest of all SERP endpoints)
+- **OS Parameter**: Affects user agent - use "macos" for Mac-specific results
+- **Billing**: Charged per task set; default accommodates up to 10 results
+
+#### Display Features
+
+- **Top Sources Breakdown** - Top 5 news sources with article counts
+- **Recent News Count** - Articles published in last 24 hours
+- **Sample Articles** - First 5 news items with full details
+- **Execution Time** - Time taken to fetch results
+
+#### Examples
+
+```bash
+# Basic news search
+mix google_news -k "artificial intelligence" -l "United States" -d 50
+
+# macOS user agent
+mix google_news -k "technology" --location-code 2840 --os macos
+
+# Large result set
+mix google_news -k "politics" -l "United States" -d 700 -o politics.json
+
+# High priority task
+mix google_news -k "breaking news" -l "United States" -p 2
+
+# Multiple topic searches
+for topic in "AI" "climate" "economy"; do
+  mix google_news -k "$topic" -l "United States" -d 100 -o "${topic}_news.json"
+done
+```
+
+#### Environment Variables
+
+Same as business_listings:
+- `DATAFORSEO_USERNAME`
+- `DATAFORSEO_PASSWORD`
 
 ## Task Reference
 
