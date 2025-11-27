@@ -8,6 +8,7 @@ Mulberry provides several Mix tasks for common operations:
 
 - `mix business_listings` - Fetch business listings from DataForSEO and save to JSON
 - `mix google_reviews` - Fetch Google reviews for businesses and save to JSON
+- `mix google_questions` - Fetch Google Questions and Answers for businesses and save to JSON
 - `mix fetch_url` - Fetch and process web pages
 - `mix search` - Search various providers (Brave, Google, Reddit, etc.)
 - `mix text` - Text processing operations (summarization, classification, etc.)
@@ -557,6 +558,95 @@ mix google_reviews -k "Joe's Pizza" -l "New York" -n 50
 mix business_listings -t "Starbucks" -l "47.6062,-122.3321,20" -o businesses.json
 # Extract CID from JSON, then:
 mix google_reviews --cid "10179360708466590899" --depth 200 -o starbucks_reviews.json
+```
+
+#### Environment Variables
+
+Same as business_listings:
+- `DATAFORSEO_USERNAME`
+- `DATAFORSEO_PASSWORD`
+
+### `mix google_questions`
+
+Fetches Google Questions and Answers for a business from DataForSEO API and saves to JSON.
+
+#### Usage
+```bash
+mix google_questions [options]
+```
+
+#### Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--keyword` | `-k` | Business name (requires --location) | - |
+| `--cid` | `-c` | Google Customer ID (from business_listings) | - |
+| `--place-id` | `-p` | Google Place ID | - |
+| `--location` | `-l` | Location for keyword search (full format required) | - |
+| `--depth` | `-n` | Number of questions (max: 700) | 20 |
+| `--language` | `-g` | Language code | en |
+| `--output` | `-o` | Output JSON file | google_questions.json |
+
+#### Key Details
+
+- **Location Format**: Must use full format: `"City,State,Country"` (e.g., `"Seattle,Washington,United States"`)
+- **Billing**: Charged per 20 questions fetched
+- **Answer Limit**: Maximum 5 answers per question
+- **CID/Place ID**: Automatically adds default US location (2840) when using CID or Place ID
+
+#### Output Structure
+
+The JSON file separates answered and unanswered questions:
+```json
+{
+  "keyword": "Pike Place Starbucks",
+  "cid": "10938722528802138001",
+  "total_questions": 28,
+  "answered_questions": 20,
+  "unanswered_questions": 8,
+  "questions_with_answers": [
+    {
+      "question_id": "...",
+      "question_text": "Is this the 1st Starbucks store?",
+      "profile_name": "Oliver Jessen",
+      "timestamp": "2019-11-26 21:17:36 +00:00",
+      "answers": [
+        {
+          "answer_id": "...",
+          "answer_text": "Technically it's the second...",
+          "profile_name": "Jeremy Juarez",
+          "timestamp": "2023-11-26 21:17:36 +00:00"
+        }
+      ]
+    }
+  ],
+  "questions_without_answers": [
+    {
+      "question_id": "...",
+      "question_text": "Do you deliver?",
+      "profile_name": "Jane Smith"
+    }
+  ]
+}
+```
+
+#### Examples
+
+```bash
+# Fetch Q&A using CID from business listing (recommended)
+mix google_questions --cid "10179360708466590899" --depth 50
+
+# Search by business name (requires full location format)
+mix google_questions -k "Pike Place Starbucks" \
+  -l "Seattle,Washington,United States" -n 30
+
+# Using place_id with custom output file
+mix google_questions -p "ChIJOwg_06VPwokRYv534QaPC8g" -o bookstore-qa.json
+
+# Combined workflow: fetch businesses then their Q&A
+mix business_listings -t "Starbucks" -l "47.6062,-122.3321,20" -o businesses.json
+# Extract CID from JSON, then:
+mix google_questions --cid "10938722528802138001" --depth 100 -o starbucks-qa.json
 ```
 
 #### Environment Variables
