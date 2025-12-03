@@ -594,6 +594,170 @@ by_employer = GoogleJobsResult.group_by_employer(result)
 # => %{"Tech Corp" => [job1, job2], "StartupCo" => [job3]}
 ```
 
+### GoogleOrganic
+
+Fetch organic search results and People Also Ask questions from Google SERP.
+
+**Module:** `DataForSEO.Tasks.GoogleOrganic`
+
+**Type:** Async (polling required)
+
+**Parameters:**
+
+Required:
+- `:keyword` - Search term (max 700 chars)
+
+Location (choose one):
+- `:location_name` - Full location name (e.g., "United States")
+- `:location_code` - Numeric location code (e.g., 2840 for USA)
+
+Optional:
+- `:language_code` - Language code (default: "en")
+- `:depth` - Results to fetch (default: 10, max: 700)
+- `:device` - Device type: "desktop" (default) or "mobile"
+- `:os` - Operating system (depends on device - see below)
+- `:priority` - 1 (normal) or 2 (high priority, additional cost)
+- `:tag` - User identifier (max 255 chars)
+
+**Device and OS Combinations:**
+- Desktop device: `os` can be "windows" or "macos"
+- Mobile device: `os` can be "android" or "ios"
+
+**Example:**
+
+```elixir
+{:ok, pid} = DataForSEO.Supervisor.start_task(
+  DataForSEO.Tasks.GoogleOrganic,
+  %{
+    keyword: "elixir programming",
+    location_name: "United States",
+    language_code: "en",
+    depth: 100
+  },
+  callback: fn {:ok, result} ->
+    IO.puts("Keyword: #{result.keyword}")
+    IO.puts("Organic results: #{GoogleOrganicResult.organic_result_count(result)}")
+    IO.puts("People Also Ask: #{GoogleOrganicResult.people_also_ask_count(result)}")
+
+    # Get top domains
+    top_domains = GoogleOrganicResult.top_domains(result, 5)
+    IO.inspect(top_domains)
+
+    # Extract People Also Ask questions
+    paa_questions = GoogleOrganicResult.extract_people_also_ask_questions(result)
+    Enum.each(paa_questions, fn q ->
+      IO.puts("Q: #{q.question}")
+      IO.puts("A: #{q.answer}")
+      IO.puts("")
+    end)
+
+    # Process organic results
+    Enum.each(result.organic_items, fn item ->
+      IO.puts("""
+      #{item.position}. #{item.title}
+        Domain: #{item.domain}
+        URL: #{item.url}
+        #{item.description}
+      """)
+    end)
+  end
+)
+```
+
+**With Mobile Device:**
+
+```elixir
+{:ok, pid} = DataForSEO.Supervisor.start_task(
+  DataForSEO.Tasks.GoogleOrganic,
+  %{
+    keyword: "best smartphones",
+    location_code: 2840,
+    device: "mobile",
+    os: "android",
+    depth: 50
+  },
+  callback: &handle_results/1
+)
+```
+
+**Result Type:** `DataForSEO.Schemas.GoogleOrganicResult`
+
+```elixir
+%GoogleOrganicResult{
+  keyword: "elixir programming",
+  location_code: 2840,
+  language_code: "en",
+  se_domain: "google.com",
+  check_url: "https://www.google.com/search?...",
+  datetime: "2025-01-27 12:00:00 +00:00",
+  se_results_count: 1_000_000,
+  items_count: 100,
+  type: "organic",
+  organic_items: [GoogleOrganicItem.t()],
+  people_also_ask: [people_also_ask_item()]
+}
+
+# Each organic item:
+%GoogleOrganicItem{
+  title: "Elixir Programming Language",
+  url: "https://elixir-lang.org",
+  description: "Official Elixir website with guides...",
+  domain: "elixir-lang.org",
+  breadcrumb: "elixir-lang.org › getting-started",
+  cache_url: "https://webcache.googleusercontent.com/...",
+  rank_group: 1,
+  rank_absolute: 1,
+  position: 1,
+  xpath: "...",
+  type: "organic",
+  is_image: false,
+  is_video: false,
+  is_featured_snippet: false,
+  rating: %{value: 4.8, votes: 1250, rating_max: 5},
+  sitelinks: [%{title: "Installation", url: "...", description: "..."}],
+  images: []
+}
+
+# Each People Also Ask item:
+%{
+  question: "What is Elixir used for?",
+  answer: "Elixir is used for building scalable applications...",
+  url: "https://example.com",
+  domain: "example.com",
+  title: "What is Elixir? - Complete Guide",
+  xpath: "..."
+}
+```
+
+**GoogleOrganicResult Helper Functions:**
+
+```elixir
+alias DataForSEO.Schemas.GoogleOrganicResult
+
+# Get counts
+GoogleOrganicResult.organic_result_count(result)  # => 100
+GoogleOrganicResult.people_also_ask_count(result)  # => 4
+
+# Extract People Also Ask questions
+paa = GoogleOrganicResult.extract_people_also_ask_questions(result)
+# => [%{question: "...", answer: "...", url: "...", domain: "..."}, ...]
+
+# Filter by domain
+elixir_results = GoogleOrganicResult.filter_by_domain(result, "elixir-lang.org")
+
+# Filter by features
+with_ratings = GoogleOrganicResult.filter_with_ratings(result)
+with_sitelinks = GoogleOrganicResult.filter_with_sitelinks(result)
+
+# Get top domains
+top_domains = GoogleOrganicResult.top_domains(result, 5)
+# => [{"elixir-lang.org", 3}, {"hexdocs.pm", 2}, ...]
+
+# Group by domain
+by_domain = GoogleOrganicResult.group_by_domain(result)
+# => %{"elixir-lang.org" => [item1, item2], "hexdocs.pm" => [item3]}
+```
+
 ### BusinessListings
 
 Search for businesses on Google Maps.
@@ -1682,6 +1846,7 @@ System.get_env("DATAFORSEO_PASSWORD") # Should not be nil
 |--------|------|-------------|-----------|
 | `GoogleNews` | Async | Fetch news articles from Google News | 700 |
 | `GoogleJobs` | Async | Fetch job listings from Google Jobs | 200 |
+| `GoogleOrganic` | Async | Fetch organic SERP results and People Also Ask | 700 |
 | `GoogleQuestions` | Async | Fetch Q&A from Google Business | 700 |
 | `GoogleReviews` | Async | Fetch Google Maps reviews | 4490 |
 | `ExtendedGoogleReviews` | Async | Multi-platform reviews | 1000 |
@@ -1699,6 +1864,16 @@ System.get_env("DATAFORSEO_PASSWORD") # Should not be nil
 - `job_count/1` - Get total number of jobs
 - `filter_by_contract_type/2` - Filter jobs by contract type
 - `group_by_employer/1` - Group jobs by employer name
+
+**GoogleOrganicResult:**
+- `organic_result_count/1` - Get total number of organic results
+- `people_also_ask_count/1` - Get total number of PAA questions
+- `extract_people_also_ask_questions/1` - Extract all PAA questions and answers
+- `filter_by_domain/2` - Filter organic results by domain
+- `filter_with_ratings/1` - Filter results with ratings
+- `filter_with_sitelinks/1` - Filter results with sitelinks
+- `top_domains/2` - Get top N domains by result count
+- `group_by_domain/1` - Group results by domain
 
 **GoogleQuestionsResult:**
 - `total_question_count/1`

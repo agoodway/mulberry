@@ -11,6 +11,7 @@ Mulberry provides several Mix tasks for common operations:
 - `mix google_questions` - Fetch Google Questions and Answers for businesses and save to JSON
 - `mix google_jobs` - Fetch Google Jobs SERP results and save to JSON
 - `mix google_news` - Fetch Google News SERP results and save to JSON
+- `mix google_organic` - Fetch Google Organic SERP results and People Also Ask questions and save to JSON
 - `mix fetch_url` - Fetch and process web pages
 - `mix search` - Search various providers (Brave, Google, Reddit, etc.)
 - `mix text` - Text processing operations (summarization, classification, etc.)
@@ -222,6 +223,88 @@ mix google_news -k "breaking news" -l "United States" -p 2
 # Multiple topic searches
 for topic in "AI" "climate" "economy"; do
   mix google_news -k "$topic" -l "United States" -d 100 -o "${topic}_news.json"
+done
+```
+
+#### Environment Variables
+
+Same as business_listings:
+- `DATAFORSEO_USERNAME`
+- `DATAFORSEO_PASSWORD`
+
+### `mix google_organic`
+
+Fetch organic search results and People Also Ask questions from Google SERP.
+
+#### Usage
+
+```bash
+mix google_organic [options]
+```
+
+#### Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--keyword` | `-k` | Search term (required, max 700 chars) | - |
+| `--location-name` | `-l` | Full location name (e.g., "United States") | - |
+| `--location-code` | - | Numeric location code (e.g., 2840) | - |
+| `--language` | `-g` | Language code | en |
+| `--depth` | `-d` | Number of results to fetch (1-700) | 10 |
+| `--device` | - | Device type: desktop or mobile | desktop |
+| `--os` | - | Operating system (see below) | - |
+| `--priority` | `-p` | Task priority (1=normal, 2=high cost) | 1 |
+| `--tag` | `-t` | User identifier (max 255 chars) | - |
+| `--output` | `-o` | Output JSON file | google_organic.json |
+
+#### Key Details
+
+- **Device and OS Combinations:**
+  - Desktop device: `os` can be "windows" or "macos"
+  - Mobile device: `os` can be "android" or "ios"
+- **People Also Ask:** Automatically extracts PAA questions and answers along with organic results
+- **Rich Features:** Captures ratings, sitelinks, images, and other SERP features
+- **Billing:** Charged per task set (default covers up to 10 results)
+
+#### Display Features
+
+The task displays summary information including:
+- Top domains by result count
+- Number of results with ratings
+- Number of results with sitelinks
+- Sample People Also Ask questions
+- Sample organic results with snippets
+
+#### Examples
+
+```bash
+# Basic organic search
+mix google_organic -k "elixir programming" -l "United States" -d 50
+
+# Search with location code
+mix google_organic -k "functional programming" --location-code 2840 -d 100
+
+# Mobile search with Android
+mix google_organic -k "best smartphones" -l "United States" --device mobile --os android
+
+# Desktop search with macOS
+mix google_organic -k "web development" -l "United States" --device desktop --os macos
+
+# High priority with custom output
+mix google_organic -k "latest tech news" -l "United States" -p 2 -o tech_results.json
+
+# Maximum depth search
+mix google_organic -k "climate change" --location-code 2840 -d 700
+
+# Extract People Also Ask questions
+mix google_organic -k "what is machine learning" -l "United States" -d 50
+```
+
+**Batch Processing:**
+```bash
+#!/bin/bash
+for keyword in "elixir" "phoenix" "liveview" "nerves"; do
+  mix google_organic -k "$keyword programming" -l "United States" -d 100 -o "${keyword}_organic.json"
 done
 ```
 
