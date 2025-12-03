@@ -260,10 +260,14 @@ defmodule DataForSEO.Tasks.GoogleOrganicTest do
                   },
                   %{
                     "type" => "people_also_ask",
-                    "title" => "What is Elixir?",
-                    "url" => "https://example.com",
-                    "domain" => "example.com",
-                    "description" => "Elixir is a functional language..."
+                    "items" => [
+                      %{
+                        "title" => "What is Elixir?",
+                        "url" => "https://example.com",
+                        "domain" => "example.com",
+                        "description" => "Elixir is a functional language..."
+                      }
+                    ]
                   }
                 ]
               }

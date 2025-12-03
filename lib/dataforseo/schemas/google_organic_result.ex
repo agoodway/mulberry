@@ -113,7 +113,13 @@ defmodule DataForSEO.Schemas.GoogleOrganicResult do
     people_also_ask =
       items
       |> Enum.filter(fn item -> item["type"] == "people_also_ask" end)
-      |> Enum.map(&parse_people_also_ask/1)
+      |> Enum.flat_map(fn paa_container ->
+        # PAA items have nested "items" array with the actual questions
+        case paa_container["items"] do
+          items when is_list(items) -> Enum.map(items, &parse_people_also_ask/1)
+          _ -> []
+        end
+      end)
 
     %__MODULE__{
       keyword: attrs["keyword"],
