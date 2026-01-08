@@ -37,7 +37,7 @@ defmodule Mulberry.Crawler do
       )
   """
 
-  alias Mulberry.Crawler.{Supervisor, Orchestrator}
+  alias Mulberry.Crawler.{Orchestrator, Sitemap, Supervisor}
 
   @type crawl_result :: %{
           url: String.t(),
@@ -51,6 +51,7 @@ defmodule Mulberry.Crawler do
   @type crawl_stats :: %{
           urls_crawled: non_neg_integer(),
           urls_failed: non_neg_integer(),
+          urls_robots_blocked: non_neg_integer(),
           start_time: integer(),
           end_time: integer() | nil,
           duration_ms: integer() | nil
@@ -67,6 +68,7 @@ defmodule Mulberry.Crawler do
     - `:retriever` - Retriever module(s) to use (default: Mulberry.Retriever.Req)
     - `:timeout` - Timeout for the entire crawl operation in milliseconds (default: :infinity)
     - `:rate_limit` - Requests per second per domain (default: 1.0)
+    - `:respect_robots_txt` - Whether to check robots.txt before crawling (default: true)
     - `:async` - If true, returns immediately with orchestrator PID (default: false)
 
   ## Returns
@@ -143,6 +145,7 @@ defmodule Mulberry.Crawler do
     - `:retriever` - Retriever module(s) to use (default: Mulberry.Retriever.Req)
     - `:timeout` - Timeout for the entire crawl operation in milliseconds (default: :infinity)
     - `:rate_limit` - Requests per second per domain (default: 1.0)
+    - `:respect_robots_txt` - Whether to check robots.txt before crawling (default: true)
     - `:async` - If true, returns immediately with orchestrator PID (default: false)
 
   ## Returns
@@ -202,6 +205,92 @@ defmodule Mulberry.Crawler do
         
       {:error, reason} ->
         {:error, reason}
+    end
+  end
+
+  @doc """
+  Crawls URLs discovered from a sitemap.
+
+  This function discovers sitemaps for the given domain, fetches all URLs from them,
+  and crawls each URL. It automatically handles sitemap indexes by recursively
+  fetching referenced sitemaps.
+
+  ## Options
+    - `:crawler_impl` - Module implementing Mulberry.Crawler.Behaviour (default: Mulberry.Crawler.Default)
+    - `:max_workers` - Maximum concurrent workers (default: 5)
+    - `:retriever` - Retriever module(s) to use (default: Mulberry.Retriever.Req)
+    - `:timeout` - Timeout for the entire crawl operation in milliseconds (default: :infinity)
+    - `:rate_limit` - Requests per second per domain (default: 1.0)
+    - `:respect_robots_txt` - Whether to check robots.txt before crawling (default: true)
+    - `:sitemap_url` - Specific sitemap URL to use instead of auto-discovery
+    - `:include_patterns` - List of regex patterns; URLs must match at least one
+    - `:exclude_patterns` - List of regex patterns; URLs matching any will be skipped
+    - `:async` - If true, returns immediately with orchestrator PID (default: false)
+
+  ## Returns
+    - `{:ok, results}` - List of crawl results
+    - `{:ok, orchestrator_pid}` - If async is true
+    - `{:error, reason}` - If sitemap discovery or crawling fails
+
+  ## Examples
+
+      # Discover and crawl from sitemaps
+      {:ok, results} = Mulberry.Crawler.crawl_from_sitemap("example.com")
+
+      # Use a specific sitemap URL
+      {:ok, results} = Mulberry.Crawler.crawl_from_sitemap(
+        "example.com",
+        sitemap_url: "https://example.com/sitemap.xml"
+      )
+
+      # Filter URLs from sitemap
+      {:ok, results} = Mulberry.Crawler.crawl_from_sitemap(
+        "example.com",
+        include_patterns: ["/blog/"],
+        exclude_patterns: ["\\\\.pdf$"]
+      )
+  """
+  @spec crawl_from_sitemap(String.t(), keyword()) ::
+          {:ok, [crawl_result()]} | {:ok, pid()} | {:error, any()}
+  def crawl_from_sitemap(domain, opts \\ []) when is_binary(domain) do
+    # Ensure supervisor is started (needed for RobotsTxt GenServer)
+    ensure_supervisor_started(opts)
+
+    # Get sitemap URL(s) - either from option or discover
+    sitemap_url = Keyword.get(opts, :sitemap_url)
+    retriever = Keyword.get(opts, :retriever, Mulberry.Retriever.Req)
+
+    # Discover or use provided sitemap
+    {:ok, sitemap_urls} =
+      if sitemap_url do
+        {:ok, [sitemap_url]}
+      else
+        Sitemap.discover_sitemaps(domain, retriever: retriever)
+      end
+
+    if sitemap_urls == [] do
+      {:error, :no_sitemaps_found}
+    else
+      urls = extract_urls_from_sitemaps(sitemap_urls, retriever)
+
+      if urls == [] do
+        {:error, :no_urls_in_sitemap}
+      else
+        crawl_urls(urls, opts)
+      end
+    end
+  end
+
+  defp extract_urls_from_sitemaps(sitemap_urls, retriever) do
+    sitemap_urls
+    |> Enum.flat_map(&fetch_sitemap_urls(&1, retriever))
+    |> Enum.uniq()
+  end
+
+  defp fetch_sitemap_urls(url, retriever) do
+    case Sitemap.fetch_and_parse(url, retriever: retriever) do
+      {:ok, entries} -> Enum.map(entries, & &1.loc)
+      {:error, _} -> []
     end
   end
 

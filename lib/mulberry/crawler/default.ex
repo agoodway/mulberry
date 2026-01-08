@@ -12,7 +12,7 @@ defmodule Mulberry.Crawler.Default do
   @behaviour Mulberry.Crawler.Behaviour
 
   require Logger
-  alias Mulberry.Crawler.URLManager
+  alias Mulberry.Crawler.{StructuredData, URLManager}
   alias Mulberry.Document.WebPage
 
   @impl true
@@ -49,6 +49,7 @@ defmodule Mulberry.Crawler.Default do
       description: extract_description(document),
       content: get_content(document),
       meta: extract_meta_tags(document),
+      structured_data: extract_structured_data(document),
       crawled_at: DateTime.utc_now()
     }
 
@@ -252,4 +253,10 @@ defmodule Mulberry.Crawler.Default do
   end
 
   defp extract_meta_tags(_), do: %{}
+
+  defp extract_structured_data(%WebPage{content: content}) when is_binary(content) do
+    StructuredData.extract_all(content)
+  end
+
+  defp extract_structured_data(_), do: %{json_ld: [], open_graph: nil, twitter_card: nil}
 end

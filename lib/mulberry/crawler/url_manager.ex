@@ -163,6 +163,92 @@ defmodule Mulberry.Crawler.URLManager do
     end
   end
 
+  @doc """
+  Compiles a list of pattern strings into regular expressions.
+
+  Patterns can be:
+  - Regular regex strings (e.g., ".*\\.pdf$")
+  - Simple glob-like patterns using * (converted to .*)
+
+  Returns `{:ok, regexes}` on success or `{:error, reason}` if any pattern fails to compile.
+
+  ## Examples
+
+      iex> {:ok, regexes} = Mulberry.Crawler.URLManager.compile_patterns([".*\\\\.pdf$", "/blog/.*"])
+      iex> length(regexes)
+      2
+
+      iex> Mulberry.Crawler.URLManager.compile_patterns(["[invalid"])
+      {:error, {:invalid_pattern, "[invalid", _}}
+  """
+  @spec compile_patterns([String.t()]) :: {:ok, [Regex.t()]} | {:error, {:invalid_pattern, String.t(), any()}}
+  def compile_patterns(patterns) when is_list(patterns) do
+    results =
+      Enum.reduce_while(patterns, {:ok, []}, fn pattern, {:ok, acc} ->
+        case compile_single_pattern(pattern) do
+          {:ok, regex} -> {:cont, {:ok, [regex | acc]}}
+          {:error, reason} -> {:halt, {:error, {:invalid_pattern, pattern, reason}}}
+        end
+      end)
+
+    case results do
+      {:ok, regexes} -> {:ok, Enum.reverse(regexes)}
+      error -> error
+    end
+  end
+
+  def compile_patterns(_), do: {:ok, []}
+
+  @doc """
+  Checks if a URL matches any of the given regex patterns.
+
+  ## Examples
+
+      iex> {:ok, patterns} = Mulberry.Crawler.URLManager.compile_patterns(["/blog/"])
+      iex> Mulberry.Crawler.URLManager.matches_patterns?("http://example.com/blog/post", patterns)
+      true
+
+      iex> {:ok, patterns} = Mulberry.Crawler.URLManager.compile_patterns(["\\\\.pdf$"])
+      iex> Mulberry.Crawler.URLManager.matches_patterns?("http://example.com/doc.pdf", patterns)
+      true
+
+      iex> Mulberry.Crawler.URLManager.matches_patterns?("http://example.com/page", [])
+      false
+  """
+  @spec matches_patterns?(url(), [Regex.t()]) :: boolean()
+  def matches_patterns?(_url, []), do: false
+
+  def matches_patterns?(url, patterns) when is_list(patterns) do
+    Enum.any?(patterns, fn pattern -> Regex.match?(pattern, url) end)
+  end
+
+  @doc """
+  Filters URLs based on include and exclude regex patterns.
+
+  ## Options
+    - `:include_patterns` - List of compiled regex patterns. URL must match at least one to be included.
+                           If empty, all URLs pass the include filter.
+    - `:exclude_patterns` - List of compiled regex patterns. URL must not match any to be included.
+
+  ## Examples
+
+      iex> {:ok, include} = Mulberry.Crawler.URLManager.compile_patterns(["/blog/"])
+      iex> {:ok, exclude} = Mulberry.Crawler.URLManager.compile_patterns(["/draft/"])
+      iex> urls = ["http://site.com/blog/post", "http://site.com/about", "http://site.com/blog/draft/1"]
+      iex> Mulberry.Crawler.URLManager.filter_urls_by_patterns(urls, include_patterns: include, exclude_patterns: exclude)
+      ["http://site.com/blog/post"]
+  """
+  @spec filter_urls_by_patterns([url()], keyword()) :: [url()]
+  def filter_urls_by_patterns(urls, opts \\ []) do
+    include_patterns = Keyword.get(opts, :include_patterns, [])
+    exclude_patterns = Keyword.get(opts, :exclude_patterns, [])
+
+    Enum.filter(urls, fn url ->
+      passes_include_filter?(url, include_patterns) &&
+        passes_exclude_filter?(url, exclude_patterns)
+    end)
+  end
+
   # Private functions
 
   defp normalize_scheme(%URI{scheme: scheme} = uri) when is_binary(scheme) do
@@ -246,5 +332,23 @@ defmodule Mulberry.Crawler.URLManager do
 
   defp blocked_by_paths?(path, blocked_paths) do
     Enum.any?(blocked_paths, &String.contains?(path, &1))
+  end
+
+  defp compile_single_pattern(pattern) when is_binary(pattern) do
+    Regex.compile(pattern)
+  end
+
+  defp compile_single_pattern(_), do: {:error, :invalid_pattern_type}
+
+  defp passes_include_filter?(_url, []), do: true
+
+  defp passes_include_filter?(url, patterns) do
+    matches_patterns?(url, patterns)
+  end
+
+  defp passes_exclude_filter?(_url, []), do: true
+
+  defp passes_exclude_filter?(url, patterns) do
+    not matches_patterns?(url, patterns)
   end
 end

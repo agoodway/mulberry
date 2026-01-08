@@ -95,11 +95,21 @@ defmodule Mulberry.Crawler.Worker do
   # Private functions
 
   defp do_crawl(url, _context, state) do
+    start_time = System.monotonic_time(:millisecond)
+
     with {:ok, normalized_url} <- URLManager.normalize_url(url),
-         {:ok, document} <- fetch_document(normalized_url, state),
+         {:ok, document, status_code} <- fetch_document(normalized_url, state),
          {:ok, data} <- extract_data(document, normalized_url, state),
          {:ok, urls} <- extract_urls(document, normalized_url, state) do
-      {:ok, %{data: data, urls: urls}}
+      response_time = System.monotonic_time(:millisecond) - start_time
+
+      {:ok,
+       %{
+         data: data,
+         urls: urls,
+         status_code: status_code,
+         response_time_ms: response_time
+       }}
     else
       {:error, reason} = error ->
         Logger.warning("Failed to crawl #{url}: #{inspect(reason)}")
@@ -112,13 +122,26 @@ defmodule Mulberry.Crawler.Worker do
 
     case Document.load(web_page, retriever: state.retriever) do
       {:ok, loaded_page} ->
-        {:ok, loaded_page}
+        # Extract status code from metadata if available
+        status_code = get_status_code(loaded_page)
+        {:ok, loaded_page, status_code}
 
       {:error, reason, _page} ->
         {:error, {:fetch_failed, reason}}
 
       {:error, reason} ->
         {:error, {:fetch_failed, reason}}
+    end
+  end
+
+  @spec get_status_code(map()) :: integer()
+  defp get_status_code(document) do
+    # Try to get status code from document metadata
+    cond do
+      Map.has_key?(document, :status_code) -> document.status_code
+      Map.has_key?(document, :metadata) && is_map(document.metadata) ->
+        document.metadata[:status_code] || 200
+      true -> 200
     end
   end
 

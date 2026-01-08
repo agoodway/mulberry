@@ -44,14 +44,18 @@ defmodule Mulberry.Crawler.Supervisor do
   @impl true
   def init(opts) do
     rate_limiter_opts = Keyword.get(opts, :rate_limiter_opts, [])
+    robots_txt_opts = Keyword.get(opts, :robots_txt_opts, [])
 
     children = [
       # Rate limiter (singleton)
       {Mulberry.Crawler.RateLimiter, rate_limiter_opts},
-      
+
+      # robots.txt cache (singleton)
+      {Mulberry.Crawler.RobotsTxt, robots_txt_opts},
+
       # DynamicSupervisor for workers
       {DynamicSupervisor, name: Mulberry.Crawler.WorkerSupervisor, strategy: :one_for_one},
-      
+
       # DynamicSupervisor for orchestrators
       {DynamicSupervisor, name: Mulberry.Crawler.OrchestratorSupervisor, strategy: :one_for_one}
     ]
