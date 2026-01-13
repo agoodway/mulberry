@@ -45,11 +45,12 @@ defmodule Mulberry.Search.Reddit do
     retriever = Keyword.get(opts, :retriever, Mulberry.Retriever.Req)
 
     # Build parameters - only add 'query' which is required
-    params = %{query: query}
-    |> maybe_add_param(:sort, Keyword.get(opts, :sort))
-    |> maybe_add_param(:timeframe, Keyword.get(opts, :timeframe))
-    |> maybe_add_param(:after, Keyword.get(opts, :after))
-    |> maybe_add_param(:trim, Keyword.get(opts, :trim))
+    params =
+      %{query: query}
+      |> maybe_add_param(:sort, Keyword.get(opts, :sort))
+      |> maybe_add_param(:timeframe, Keyword.get(opts, :timeframe))
+      |> maybe_add_param(:after, Keyword.get(opts, :after))
+      |> maybe_add_param(:trim, Keyword.get(opts, :trim))
 
     request_opts = [
       params: params,
@@ -80,7 +81,10 @@ defmodule Mulberry.Search.Reddit do
         {:error, :search_failed}
 
       response ->
-        Logger.error("#{__MODULE__}.to_documents/1 unexpected response format: #{inspect(response)}")
+        Logger.error(
+          "#{__MODULE__}.to_documents/1 unexpected response format: #{inspect(response)}"
+        )
+
         {:error, :parse_search_results_failed}
     end
   end
@@ -94,14 +98,14 @@ defmodule Mulberry.Search.Reddit do
       selftext: post["selftext"],
       url: post["url"],
       permalink: post["permalink"],
-      
+
       # Metadata
       subreddit: post["subreddit"],
       subreddit_prefixed: post["subreddit_name_prefixed"],
       subreddit_subscribers: post["subreddit_subscribers"],
       author: post["author"],
       author_fullname: post["author_fullname"],
-      
+
       # Engagement metrics
       score: post["score"],
       ups: post["ups"],
@@ -110,11 +114,11 @@ defmodule Mulberry.Search.Reddit do
       num_comments: post["num_comments"],
       total_awards_received: post["total_awards_received"],
       gilded: post["gilded"],
-      
+
       # Timestamps
       created_utc: post["created_utc"],
       created_at_iso: post["created_at_iso"],
-      
+
       # Flags
       is_video: post["is_video"],
       is_self: post["is_self"],
@@ -124,7 +128,7 @@ defmodule Mulberry.Search.Reddit do
       archived: post["archived"],
       stickied: post["stickied"],
       pinned: post["pinned"],
-      
+
       # Additional metadata
       link_flair_text: post["link_flair_text"],
       domain: post["domain"]

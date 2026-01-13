@@ -16,18 +16,20 @@ defmodule Mulberry.Search.YouTubeTest do
       expect(Retriever, :get, fn module, url, opts ->
         assert module == Mulberry.Retriever.Req
         assert url == "https://api.scrapecreators.com/v1/youtube/search"
-        
+
         # Check params
         assert opts[:params] == %{query: "elixir programming"}
-        
+
         # Check headers - the headers list should contain the API key tuple
         headers = opts[:headers]
         assert is_list(headers)
-        assert Enum.any?(headers, fn 
-          {"x-api-key", "test_api_key"} -> true
-          _ -> false
-        end), "Expected headers to contain {\"x-api-key\", \"test_api_key\"}, but got: #{inspect(headers)}"
-        
+
+        assert Enum.any?(headers, fn
+                 {"x-api-key", "test_api_key"} -> true
+                 _ -> false
+               end),
+               "Expected headers to contain {\"x-api-key\", \"test_api_key\"}, but got: #{inspect(headers)}"
+
         {:ok, %Response{status: :ok, content: %{"videos" => []}}}
       end)
 
@@ -42,7 +44,7 @@ defmodule Mulberry.Search.YouTubeTest do
         assert params.sortBy == "viewCount"
         assert params.filter == "video"
         assert params.continuationToken == "EooDEg..."
-        
+
         {:ok, %Response{status: :ok, content: %{"videos" => []}}}
       end)
 
@@ -52,7 +54,7 @@ defmodule Mulberry.Search.YouTubeTest do
         filter: "video",
         continuation_token: "EooDEg..."
       ]
-      
+
       assert {:ok, _} = YouTube.search("test query", 20, opts)
     end
 
@@ -96,7 +98,7 @@ defmodule Mulberry.Search.YouTubeTest do
       }
 
       {:ok, [doc]} = YouTube.to_documents(youtube_response)
-      
+
       assert %Mulberry.Document.YouTubeVideo{} = doc
       assert doc.id == "BzSzwqb-OEE"
       assert doc.url == "https://www.youtube.com/watch?v=BzSzwqb-OEE"
@@ -124,7 +126,7 @@ defmodule Mulberry.Search.YouTubeTest do
       }
 
       {:ok, [doc]} = YouTube.to_documents(youtube_response)
-      
+
       assert %Mulberry.Document.YouTubeChannel{} = doc
       assert doc.id == "UC123"
       assert doc.title == "Test Channel"
@@ -160,7 +162,7 @@ defmodule Mulberry.Search.YouTubeTest do
       }
 
       {:ok, [doc]} = YouTube.to_documents(youtube_response)
-      
+
       assert %Mulberry.Document.YouTubePlaylist{} = doc
       assert doc.id == "PL123"
       assert doc.title == "Test Playlist"
@@ -196,7 +198,7 @@ defmodule Mulberry.Search.YouTubeTest do
       }
 
       {:ok, [doc]} = YouTube.to_documents(youtube_response)
-      
+
       assert %Mulberry.Document.YouTubeShort{} = doc
       assert doc.id == "uMNvF-lSCHg"
       assert doc.title == "LONG RUN ROUTINE #run #runvlog"
@@ -242,17 +244,18 @@ defmodule Mulberry.Search.YouTubeTest do
       }
 
       {:ok, docs} = YouTube.to_documents(youtube_response)
-      
+
       assert length(docs) == 4
-      
+
       # Verify we have one of each type
-      types = docs |> Enum.map(&(&1.__struct__)) |> Enum.sort()
+      types = docs |> Enum.map(& &1.__struct__) |> Enum.sort()
+
       assert types == [
-        Mulberry.Document.YouTubeChannel,
-        Mulberry.Document.YouTubePlaylist,
-        Mulberry.Document.YouTubeShort,
-        Mulberry.Document.YouTubeVideo
-      ]
+               Mulberry.Document.YouTubeChannel,
+               Mulberry.Document.YouTubePlaylist,
+               Mulberry.Document.YouTubeShort,
+               Mulberry.Document.YouTubeVideo
+             ]
     end
 
     test "handles empty results" do

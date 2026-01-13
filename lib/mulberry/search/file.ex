@@ -43,7 +43,8 @@ defmodule Mulberry.Search.File do
     search_paths = Keyword.get(opts, :paths, ["."])
     file_patterns = Keyword.get(opts, :patterns, ["*"])
     exclude_dirs = Keyword.get(opts, :exclude, ["_build", "deps", ".git", "node_modules"])
-    max_file_size = Keyword.get(opts, :max_file_size, 10_485_760)  # 10MB default
+    # 10MB default
+    max_file_size = Keyword.get(opts, :max_file_size, 10_485_760)
 
     case mode do
       "filename" ->
@@ -156,7 +157,14 @@ defmodule Mulberry.Search.File do
     with {:ok, %{"results" => filename_results}} <-
            search_by_filename(query, search_paths, patterns, exclude_dirs, count * 2),
          {:ok, %{"results" => content_results}} <-
-           search_by_content(query, search_paths, patterns, exclude_dirs, count * 2, max_file_size) do
+           search_by_content(
+             query,
+             search_paths,
+             patterns,
+             exclude_dirs,
+             count * 2,
+             max_file_size
+           ) do
       # Merge and deduplicate results
       all_results =
         merge_search_results(filename_results, content_results)
@@ -194,21 +202,31 @@ defmodule Mulberry.Search.File do
     # Normalize by replacing underscores with spaces and removing extension for comparison
     base_filename = Path.basename(filename, Path.extname(filename))
     normalized_filename = String.replace(base_filename, "_", " ")
-    
+
     cond do
       # Exact match (with normalization)
-      normalized_filename == query -> 1.0
+      normalized_filename == query ->
+        1.0
 
       # Contains full query
-      String.contains?(filename, query) || String.contains?(normalized_filename, query) -> 0.8
+      String.contains?(filename, query) || String.contains?(normalized_filename, query) ->
+        0.8
 
       # All parts match
-      Enum.all?(query_parts, &(String.contains?(filename, &1) || String.contains?(normalized_filename, &1))) ->
-        0.6 + (0.2 * (length(query_parts) / String.length(filename)))
+      Enum.all?(
+        query_parts,
+        &(String.contains?(filename, &1) || String.contains?(normalized_filename, &1))
+      ) ->
+        0.6 + 0.2 * (length(query_parts) / String.length(filename))
 
       # Some parts match
       true ->
-        matches = Enum.count(query_parts, &(String.contains?(filename, &1) || String.contains?(normalized_filename, &1)))
+        matches =
+          Enum.count(
+            query_parts,
+            &(String.contains?(filename, &1) || String.contains?(normalized_filename, &1))
+          )
+
         matches / length(query_parts) * 0.5
     end
   end
@@ -246,8 +264,10 @@ defmodule Mulberry.Search.File do
     base_args = [
       query,
       "--json",
-      "--max-count", "5",
-      "--max-filesize", "#{max_file_size}"
+      "--max-count",
+      "5",
+      "--max-filesize",
+      "#{max_file_size}"
     ]
 
     pattern_args =
@@ -295,11 +315,13 @@ defmodule Mulberry.Search.File do
   defp calculate_content_score(matches) do
     # Score based on number of matches and their distribution
     match_count = length(matches)
-    unique_lines = matches |> Enum.map(fn m -> m["data"]["line_number"] end) |> Enum.uniq() |> length()
+
+    unique_lines =
+      matches |> Enum.map(fn m -> m["data"]["line_number"] end) |> Enum.uniq() |> length()
 
     base_score = min(match_count * 0.1, 0.5)
     line_bonus = min(unique_lines * 0.05, 0.3)
-    
+
     min(base_score + line_bonus, 1.0)
   end
 
@@ -397,8 +419,8 @@ defmodule Mulberry.Search.File do
             %{
               "path" => filename_result["path"],
               "score" => (filename_result["score"] + content_result["score"]) / 2,
-              "matches" => 
-                (filename_result["matches"] || []) ++ (content_result["matches"] || [])
+              "matches" =>
+                ((filename_result["matches"] || []) ++ (content_result["matches"] || []))
                 |> Enum.uniq()
                 |> Enum.take(5),
               "preview" => content_result["preview"] || filename_result["preview"]
@@ -409,7 +431,9 @@ defmodule Mulberry.Search.File do
     # Add content results that weren't in filename results
     content_only =
       content_results
-      |> Enum.reject(fn r -> Map.has_key?(Map.new(filename_results, fn r -> {r["path"], r} end), r["path"]) end)
+      |> Enum.reject(fn r ->
+        Map.has_key?(Map.new(filename_results, fn r -> {r["path"], r} end), r["path"])
+      end)
 
     merged ++ content_only
   end

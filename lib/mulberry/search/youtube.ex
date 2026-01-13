@@ -2,16 +2,16 @@ defmodule Mulberry.Search.YouTube do
   @behaviour Mulberry.Search.Behaviour
   @moduledoc """
   YouTube search using ScrapeCreators API
-  
+
   Provides comprehensive YouTube search functionality with support for videos, channels,
   playlists, shorts, and live streams.
-  
+
   ## Configuration
-  
+
   Requires the `SCRAPECREATORS_API_KEY` environment variable or `:scrapecreators_api_key` in config.
-  
+
   ## Examples
-  
+
       # Basic search
       {:ok, results} = Mulberry.search(Mulberry.Search.YouTube, "elixir programming")
       
@@ -27,45 +27,54 @@ defmodule Mulberry.Search.YouTube do
       {:ok, response} = Mulberry.Search.YouTube.search("elixir", 20,
         continuation_token: "EooDEg..."
       )
-  
+
   ## API Reference
-  
+
   https://api.scrapecreators.com/v1/youtube/search
-  
+
   Video explaining the response format: https://www.tella.tv/video/explaining-youtube-search-results-payload-353a
   """
-  
+
   require Logger
-  
+
   @youtube_search_url "https://api.scrapecreators.com/v1/youtube/search"
-  
+
   @impl true
   @spec search(binary(), pos_integer(), keyword()) :: {:ok, map()} | {:error, binary()}
   def search(query, _count \\ 20, opts \\ []) do
     retriever = Keyword.get(opts, :retriever, Mulberry.Retriever.Req)
-    
+
     # Build parameters - only add 'query' which is required
-    params = %{query: query}
-    |> maybe_add_param(:uploadDate, Keyword.get(opts, :upload_date))
-    |> maybe_add_param(:sortBy, Keyword.get(opts, :sort_by))
-    |> maybe_add_param(:filter, Keyword.get(opts, :filter))
-    |> maybe_add_param(:continuationToken, Keyword.get(opts, :continuation_token))
-    
+    params =
+      %{query: query}
+      |> maybe_add_param(:uploadDate, Keyword.get(opts, :upload_date))
+      |> maybe_add_param(:sortBy, Keyword.get(opts, :sort_by))
+      |> maybe_add_param(:filter, Keyword.get(opts, :filter))
+      |> maybe_add_param(:continuationToken, Keyword.get(opts, :continuation_token))
+
     request_opts = [
       params: params,
       headers: [
         {"x-api-key", Mulberry.config(:scrapecreators_api_key)}
       ]
     ]
-    
+
     case Mulberry.Retriever.get(retriever, @youtube_search_url, request_opts) do
       {:ok, response} -> {:ok, response.content}
       {:error, _} = error -> error
     end
   end
-  
+
   @impl true
-  @spec to_documents(any()) :: {:ok, [Mulberry.Document.YouTubeVideo.t() | Mulberry.Document.YouTubeChannel.t() | Mulberry.Document.YouTubePlaylist.t() | Mulberry.Document.YouTubeShort.t()]} | {:error, atom()}
+  @spec to_documents(any()) ::
+          {:ok,
+           [
+             Mulberry.Document.YouTubeVideo.t()
+             | Mulberry.Document.YouTubeChannel.t()
+             | Mulberry.Document.YouTubePlaylist.t()
+             | Mulberry.Document.YouTubeShort.t()
+           ]}
+          | {:error, atom()}
   def to_documents(results) do
     case results do
       %{"videos" => videos} = response when is_list(videos) ->
@@ -74,39 +83,42 @@ defmodule Mulberry.Search.YouTube do
         channel_docs = convert_channels(Map.get(response, "channels", []))
         playlist_docs = convert_playlists(Map.get(response, "playlists", []))
         short_docs = convert_shorts(Map.get(response, "shorts", []))
-        
+
         # Combine all documents
         all_docs = video_docs ++ channel_docs ++ playlist_docs ++ short_docs
         {:ok, all_docs}
-        
+
       %{"videos" => []} ->
         # No results found
         {:ok, []}
-        
+
       response ->
-        Logger.error("#{__MODULE__}.to_documents/1 unexpected response format: #{inspect(response)}")
+        Logger.error(
+          "#{__MODULE__}.to_documents/1 unexpected response format: #{inspect(response)}"
+        )
+
         {:error, :parse_search_results_failed}
     end
   end
-  
+
   # Private helper functions
-  
+
   defp convert_videos(videos) when is_list(videos) do
     Enum.map(videos, &video_to_document/1)
   end
-  
+
   defp convert_channels(channels) when is_list(channels) do
     Enum.map(channels, &channel_to_document/1)
   end
-  
+
   defp convert_playlists(playlists) when is_list(playlists) do
     Enum.map(playlists, &playlist_to_document/1)
   end
-  
+
   defp convert_shorts(shorts) when is_list(shorts) do
     Enum.map(shorts, &short_to_document/1)
   end
-  
+
   defp video_to_document(video) do
     Mulberry.Document.YouTubeVideo.new(%{
       type: video["type"],
@@ -124,7 +136,7 @@ defmodule Mulberry.Search.YouTube do
       badges: video["badges"] || []
     })
   end
-  
+
   defp channel_to_document(channel) do
     Mulberry.Document.YouTubeChannel.new(%{
       type: channel["type"],
@@ -138,7 +150,7 @@ defmodule Mulberry.Search.YouTube do
       description: channel["description"]
     })
   end
-  
+
   defp playlist_to_document(playlist) do
     Mulberry.Document.YouTubePlaylist.new(%{
       type: playlist["type"],
@@ -152,7 +164,7 @@ defmodule Mulberry.Search.YouTube do
       first_video: convert_first_video_info(playlist["firstVideo"])
     })
   end
-  
+
   defp short_to_document(short) do
     Mulberry.Document.YouTubeShort.new(%{
       type: short["type"],
@@ -170,8 +182,9 @@ defmodule Mulberry.Search.YouTube do
       badges: short["badges"] || []
     })
   end
-  
+
   defp convert_channel_info(nil), do: nil
+
   defp convert_channel_info(channel) when is_map(channel) do
     %{
       id: channel["id"],
@@ -180,8 +193,9 @@ defmodule Mulberry.Search.YouTube do
       thumbnail: channel["thumbnail"]
     }
   end
-  
+
   defp convert_first_video_info(nil), do: nil
+
   defp convert_first_video_info(video) when is_map(video) do
     %{
       id: video["id"],
@@ -189,7 +203,7 @@ defmodule Mulberry.Search.YouTube do
       length_text: video["lengthText"]
     }
   end
-  
+
   defp maybe_add_param(params, _key, nil), do: params
   defp maybe_add_param(params, key, value), do: Map.put(params, key, value)
 end

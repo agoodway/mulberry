@@ -16,18 +16,20 @@ defmodule Mulberry.Search.RedditTest do
       expect(Retriever, :get, fn module, url, opts ->
         assert module == Mulberry.Retriever.Req
         assert url == "https://api.scrapecreators.com/v1/reddit/search"
-        
+
         # Check params
         assert opts[:params] == %{query: "elixir programming"}
-        
+
         # Check headers - the headers list should contain the API key tuple
         headers = opts[:headers]
         assert is_list(headers)
-        assert Enum.any?(headers, fn 
-          {"x-api-key", "test_api_key"} -> true
-          _ -> false
-        end), "Expected headers to contain {\"x-api-key\", \"test_api_key\"}, but got: #{inspect(headers)}"
-        
+
+        assert Enum.any?(headers, fn
+                 {"x-api-key", "test_api_key"} -> true
+                 _ -> false
+               end),
+               "Expected headers to contain {\"x-api-key\", \"test_api_key\"}, but got: #{inspect(headers)}"
+
         {:ok, %Response{status: :ok, content: %{"success" => true, "posts" => []}}}
       end)
 
@@ -42,7 +44,7 @@ defmodule Mulberry.Search.RedditTest do
         assert params.timeframe == "month"
         assert params.after == "t3_123456"
         assert params.trim == true
-        
+
         {:ok, %Response{status: :ok, content: %{"success" => true, "posts" => []}}}
       end)
 
@@ -52,7 +54,7 @@ defmodule Mulberry.Search.RedditTest do
         after: "t3_123456",
         trim: true
       ]
-      
+
       assert {:ok, _} = Reddit.search("test query", 20, opts)
     end
 
@@ -106,12 +108,12 @@ defmodule Mulberry.Search.RedditTest do
       }
 
       {:ok, [doc]} = Reddit.to_documents(reddit_response)
-      
+
       assert %Mulberry.Document.RedditPost{} = doc
       assert doc.url == "https://www.reddit.com/r/elixir/comments/test"
       assert doc.title == "Test Post"
       assert doc.selftext == "This is a test post content"
-      
+
       # Check direct fields instead of metadata
       assert doc.subreddit == "elixir"
       assert doc.author == "test_user"
@@ -127,6 +129,7 @@ defmodule Mulberry.Search.RedditTest do
 
     test "preserves full selftext" do
       long_text = String.duplicate("a", 600)
+
       reddit_response = %{
         "success" => true,
         "posts" => [

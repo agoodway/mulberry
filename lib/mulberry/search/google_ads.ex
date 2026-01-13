@@ -48,20 +48,21 @@ defmodule Mulberry.Search.GoogleAds do
   @google_ads_url "https://api.scrapecreators.com/v1/google/company/ads"
 
   @impl true
-  @spec search(binary() | nil, pos_integer(), keyword()) :: {:ok, map()} | {:error, binary() | atom()}
+  @spec search(binary() | nil, pos_integer(), keyword()) ::
+          {:ok, map()} | {:error, binary() | atom()}
   def search(query, _count \\ 20, opts \\ []) do
     with :ok <- validate_search_params(query, opts) do
       retriever = Keyword.get(opts, :retriever, Mulberry.Retriever.Req)
-      
+
       params = build_params(query, opts)
-      
+
       request_opts = [
         params: params,
         headers: [
           {"x-api-key", Mulberry.config(:scrapecreators_api_key)}
         ]
       ]
-      
+
       case Mulberry.Retriever.get(retriever, @google_ads_url, request_opts) do
         {:ok, response} -> {:ok, response.content}
         {:error, %{status: :rate_limited}} -> {:error, :rate_limited}
@@ -77,16 +78,19 @@ defmodule Mulberry.Search.GoogleAds do
       %{"ads" => ads} when is_list(ads) ->
         docs = Enum.map(ads, &ad_to_document/1)
         {:ok, docs}
-        
+
       %{"ads" => []} ->
         {:ok, []}
-        
+
       %{"error" => error} ->
         Logger.error("#{__MODULE__}.to_documents/1 Google ads search failed: #{inspect(error)}")
         {:error, :api_error}
-        
+
       response ->
-        Logger.error("#{__MODULE__}.to_documents/1 unexpected response format: #{inspect(response)}")
+        Logger.error(
+          "#{__MODULE__}.to_documents/1 unexpected response format: #{inspect(response)}"
+        )
+
         {:error, :invalid_response_format}
     end
   end
@@ -101,16 +105,20 @@ defmodule Mulberry.Search.GoogleAds do
 
   defp build_params(domain, opts) do
     params = %{}
-    
+
     # Either domain or advertiser_id is required
     params = if domain, do: Map.put(params, :domain, domain), else: params
-    params = if opts[:advertiser_id], do: Map.put(params, :advertiser_id, opts[:advertiser_id]), else: params
-    
+
+    params =
+      if opts[:advertiser_id],
+        do: Map.put(params, :advertiser_id, opts[:advertiser_id]),
+        else: params
+
     # Optional parameters
     params = if opts[:topic], do: Map.put(params, :topic, opts[:topic]), else: params
     params = if opts[:region], do: Map.put(params, :region, opts[:region]), else: params
     params = if opts[:cursor], do: Map.put(params, :cursor, opts[:cursor]), else: params
-    
+
     params
   end
 
@@ -125,7 +133,7 @@ defmodule Mulberry.Search.GoogleAds do
       first_shown: ad["firstShown"],
       last_shown: ad["lastShown"]
     }
-    
+
     Mulberry.Document.GoogleAd.new(attrs)
   end
 end

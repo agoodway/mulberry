@@ -16,14 +16,14 @@ defmodule Mulberry.Search.FacebookAdCompaniesTest do
       expect(Retriever, :get, fn module, url, opts ->
         assert module == Mulberry.Retriever.Req
         assert url == "https://api.scrapecreators.com/v1/facebook/adLibrary/search/companies"
-        
+
         # Check params
         assert opts[:params] == %{query: "Nike"}
-        
+
         # Check headers
         headers = opts[:headers]
         assert {"x-api-key", "test_api_key"} in headers
-        
+
         {:ok, %Response{status: :ok, content: %{"searchResults" => []}}}
       end)
 
@@ -32,7 +32,7 @@ defmodule Mulberry.Search.FacebookAdCompaniesTest do
 
     test "uses custom retriever when specified" do
       mock_retriever = :custom_retriever
-      
+
       expect(Retriever, :get, fn module, _url, _opts ->
         assert module == mock_retriever
         {:ok, %Response{status: :ok, content: %{"searchResults" => []}}}
@@ -88,11 +88,11 @@ defmodule Mulberry.Search.FacebookAdCompaniesTest do
       }
 
       {:ok, documents} = FacebookAdCompanies.to_documents(results)
-      
+
       assert length(documents) == 2
-      
+
       [nike_football, nike] = documents
-      
+
       # Verify Nike Football document
       assert nike_football.__struct__ == Mulberry.Document.FacebookAdCompany
       assert nike_football.page_id == "51212153078"
@@ -104,7 +104,7 @@ defmodule Mulberry.Search.FacebookAdCompaniesTest do
       assert nike_football.ig_followers == 46_451_228
       assert nike_football.ig_verification == true
       assert nike_football.page_is_deleted == false
-      
+
       # Verify Nike document
       assert nike.__struct__ == Mulberry.Document.FacebookAdCompany
       assert nike.page_id == "15087023444"
@@ -125,8 +125,8 @@ defmodule Mulberry.Search.FacebookAdCompaniesTest do
     end
 
     test "handles unexpected response format" do
-      assert {:error, :parse_search_results_failed} = 
-        FacebookAdCompanies.to_documents(%{"unexpected" => "format"})
+      assert {:error, :parse_search_results_failed} =
+               FacebookAdCompanies.to_documents(%{"unexpected" => "format"})
     end
 
     test "handles missing optional fields gracefully" do
@@ -164,11 +164,11 @@ defmodule Mulberry.Search.FacebookAdCompaniesTest do
     setup do
       # Store original value if it exists
       original_value = Application.get_env(:mulberry, :scrapecreators_api_key)
-      
+
       # Set test value
       Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
-      
-      on_exit(fn -> 
+
+      on_exit(fn ->
         # Restore original value or delete
         if original_value do
           Application.put_env(:mulberry, :scrapecreators_api_key, original_value)
@@ -180,29 +180,30 @@ defmodule Mulberry.Search.FacebookAdCompaniesTest do
 
     test "works with the high-level search interface" do
       expect(Retriever, :get, fn _module, _url, _opts ->
-        {:ok, %Response{
-          status: :ok, 
-          content: %{
-            "searchResults" => [
-              %{
-                "page_id" => "123",
-                "name" => "Example Company",
-                "category" => "Technology",
-                "likes" => 1000,
-                "verification" => "BLUE_VERIFIED",
-                "ig_username" => "example",
-                "ig_followers" => 5000,
-                "ig_verification" => true,
-                "page_is_deleted" => false
-              }
-            ]
-          }
-        }}
+        {:ok,
+         %Response{
+           status: :ok,
+           content: %{
+             "searchResults" => [
+               %{
+                 "page_id" => "123",
+                 "name" => "Example Company",
+                 "category" => "Technology",
+                 "likes" => 1000,
+                 "verification" => "BLUE_VERIFIED",
+                 "ig_username" => "example",
+                 "ig_followers" => 5000,
+                 "ig_verification" => true,
+                 "page_is_deleted" => false
+               }
+             ]
+           }
+         }}
       end)
-      
+
       # The high-level search function now properly handles the tuple returns
       {:ok, companies} = Mulberry.search(FacebookAdCompanies, "Example", 10)
-      
+
       assert length(companies) == 1
       [company] = companies
       assert company.name == "Example Company"

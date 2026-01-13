@@ -12,7 +12,7 @@ defmodule Mulberry.Search.FileTest do
       # Mock file system operations
       expect(Path, :wildcard, fn path ->
         case path do
-          "./**/*" -> 
+          "./**/*" ->
             [
               "./lib/mulberry.ex",
               "./lib/mulberry/search.ex",
@@ -20,7 +20,9 @@ defmodule Mulberry.Search.FileTest do
               "./README.md",
               "./_build/test/lib/mulberry/ebin/mulberry.beam"
             ]
-          _ -> []
+
+          _ ->
+            []
         end
       end)
 
@@ -29,7 +31,7 @@ defmodule Mulberry.Search.FileTest do
       end)
 
       assert {:ok, %{"results" => results}} = File.search("mulberry", 10, mode: "filename")
-      
+
       assert length(results) == 2
       assert Enum.all?(results, fn r -> String.contains?(r["path"], "mulberry") end)
       assert Enum.all?(results, fn r -> r["score"] > 0 end)
@@ -54,7 +56,7 @@ defmodule Mulberry.Search.FileTest do
       end)
 
       assert {:ok, %{"results" => results}} = File.search("mulberry", 10, mode: "content")
-      
+
       assert length(results) == 2
       assert Enum.any?(results, fn r -> r["path"] == "./lib/mulberry.ex" end)
       assert Enum.any?(results, fn r -> r["path"] == "./test/mulberry_test.exs" end)
@@ -77,7 +79,7 @@ defmodule Mulberry.Search.FileTest do
       end)
 
       assert {:ok, %{"results" => results}} = File.search("mulberry", 10, mode: "content")
-      
+
       assert length(results) == 1
       assert hd(results)["path"] == "./lib/mulberry.ex"
       assert length(hd(results)["matches"]) == 3
@@ -92,12 +94,14 @@ defmodule Mulberry.Search.FileTest do
 
       # Mock content search (ripgrep)
       expect(System, :cmd, fn "which", ["rg"] -> {"", 0} end)
+
       expect(System, :cmd, fn "rg", _, _ ->
-        {~s({"type":"match","data":{"path":{"text":"./README.md"},"lines":{"text":"# Mulberry"},"line_number":1}}), 0}
+        {~s({"type":"match","data":{"path":{"text":"./README.md"},"lines":{"text":"# Mulberry"},"line_number":1}}),
+         0}
       end)
 
       assert {:ok, %{"results" => results}} = File.search("mulberry", 10, mode: "combined")
-      
+
       # Should have results from both filename and content search
       assert length(results) >= 1
       assert Enum.any?(results, fn r -> r["path"] == "./lib/mulberry.ex" end)
@@ -120,10 +124,10 @@ defmodule Mulberry.Search.FileTest do
         patterns: ["*.ex"],
         exclude: ["_build", "deps"]
       ]
-      
+
       opts = Keyword.put(opts, :mode, "filename")
       assert {:ok, %{"results" => results}} = File.search("search", 10, opts)
-      
+
       assert length(results) == 1
       assert hd(results)["path"] == "./lib/mulberry/search.ex"
     end
@@ -140,7 +144,7 @@ defmodule Mulberry.Search.FileTest do
       expect(Elixir.File, :regular?, 3, fn _ -> true end)
 
       assert {:ok, %{"results" => results}} = File.search("mulberry", 10, mode: "filename")
-      
+
       assert length(results) == 1
       assert hd(results)["path"] == "./lib/mulberry.ex"
       refute Enum.any?(results, fn r -> String.contains?(r["path"], "_build") end)
@@ -160,12 +164,12 @@ defmodule Mulberry.Search.FileTest do
 
     test "respects count limit" do
       files = for i <- 1..50, do: "./file#{i}.ex"
-      
+
       expect(Path, :wildcard, fn _ -> files end)
       expect(Elixir.File, :regular?, 50, fn _ -> true end)
 
       assert {:ok, %{"results" => results}} = File.search("file", 20, mode: "filename")
-      
+
       assert length(results) == 20
     end
 
@@ -182,11 +186,11 @@ defmodule Mulberry.Search.FileTest do
       expect(Elixir.File, :regular?, 4, fn _ -> true end)
 
       assert {:ok, %{"results" => results}} = File.search("exact match", 10, mode: "filename")
-      
+
       # Results should be sorted by score
       scores = Enum.map(results, fn r -> r["score"] end)
       assert scores == Enum.sort(scores, :desc)
-      
+
       # Exact match should have highest score
       # Exact match (with underscore) should have highest score
       assert hd(results)["path"] == "./exact_match.ex"
@@ -214,15 +218,15 @@ defmodule Mulberry.Search.FileTest do
       }
 
       assert {:ok, documents} = File.to_documents(results)
-      
+
       assert length(documents) == 2
       assert Enum.all?(documents, fn doc -> %Document.File{} = doc end)
-      
+
       [doc1, doc2] = documents
       assert doc1.path == "./lib/mulberry.ex"
       assert doc1.title == "mulberry.ex"
       assert Keyword.get(doc1.meta, :score) == 0.9
-      
+
       assert doc2.path == "./test/test.ex"
       assert doc2.title == "test.ex"
     end
@@ -258,11 +262,12 @@ defmodule Mulberry.Search.FileTest do
       expect(Path, :wildcard, fn _ ->
         ["./lib/my_app.ex", "./lib/my_app/worker.ex", "./lib/my_app/supervisor.ex"]
       end)
+
       expect(Elixir.File, :regular?, 3, fn _ -> true end)
 
-      assert {:ok, %{"results" => results}} = 
-        File.search("supervisor", 10, mode: "filename", patterns: ["*.ex"])
-      
+      assert {:ok, %{"results" => results}} =
+               File.search("supervisor", 10, mode: "filename", patterns: ["*.ex"])
+
       assert length(results) == 1
       assert hd(results)["path"] == "./lib/my_app/supervisor.ex"
     end
@@ -274,11 +279,12 @@ defmodule Mulberry.Search.FileTest do
           _ -> []
         end
       end)
+
       expect(Elixir.File, :regular?, 3, fn _ -> true end)
 
-      assert {:ok, %{"results" => results}} = 
-        File.search("guide", 10, mode: "filename", patterns: ["*.md"])
-      
+      assert {:ok, %{"results" => results}} =
+               File.search("guide", 10, mode: "filename", patterns: ["*.md"])
+
       assert Enum.any?(results, fn r -> r["path"] == "./docs/guide.md" end)
     end
 
@@ -290,11 +296,12 @@ defmodule Mulberry.Search.FileTest do
           _ -> []
         end
       end)
+
       expect(Elixir.File, :regular?, 2, fn _ -> true end)
 
-      assert {:ok, %{"results" => results}} = 
-        File.search("app", 10, mode: "filename", patterns: ["*.ex", "*.exs"])
-      
+      assert {:ok, %{"results" => results}} =
+               File.search("app", 10, mode: "filename", patterns: ["*.ex", "*.exs"])
+
       assert length(results) == 2
       assert Enum.any?(results, fn r -> String.ends_with?(r["path"], ".ex") end)
       assert Enum.any?(results, fn r -> String.ends_with?(r["path"], ".exs") end)

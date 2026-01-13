@@ -26,7 +26,8 @@ defmodule Mulberry.Search.GoogleAdsTest do
                  "advertiserId" => "AR01614014350098432001",
                  "creativeId" => "CR10449491775734153217",
                  "format" => "text",
-                 "adUrl" => "https://adstransparency.google.com/advertiser/AR01614014350098432001/creative/CR10449491775734153217",
+                 "adUrl" =>
+                   "https://adstransparency.google.com/advertiser/AR01614014350098432001/creative/CR10449491775734153217",
                  "advertiserName" => "Lululemon Athletica Canada Inc.",
                  "domain" => "lululemon.com",
                  "firstShown" => "2023-12-29T21:59:16.000Z",
@@ -66,10 +67,10 @@ defmodule Mulberry.Search.GoogleAdsTest do
     test "searches political ads with region" do
       expect(Mulberry.Retriever, :get, fn _retriever, _url, opts ->
         assert opts[:params] == %{
-          domain: "example.com",
-          topic: "political",
-          region: "US"
-        }
+                 domain: "example.com",
+                 topic: "political",
+                 region: "US"
+               }
 
         {:ok,
          %Mulberry.Retriever.Response{
@@ -81,7 +82,8 @@ defmodule Mulberry.Search.GoogleAdsTest do
          }}
       end)
 
-      assert {:ok, _response} = GoogleAds.search("example.com", 20, topic: "political", region: "US")
+      assert {:ok, _response} =
+               GoogleAds.search("example.com", 20, topic: "political", region: "US")
     end
 
     test "paginates with cursor" do
@@ -131,7 +133,8 @@ defmodule Mulberry.Search.GoogleAdsTest do
             "advertiserId" => "AR01614014350098432001",
             "creativeId" => "CR10449491775734153217",
             "format" => "text",
-            "adUrl" => "https://adstransparency.google.com/advertiser/AR01614014350098432001/creative/CR10449491775734153217",
+            "adUrl" =>
+              "https://adstransparency.google.com/advertiser/AR01614014350098432001/creative/CR10449491775734153217",
             "advertiserName" => "Lululemon Athletica Canada Inc.",
             "domain" => "lululemon.com",
             "firstShown" => "2023-12-29T21:59:16.000Z",
@@ -141,7 +144,8 @@ defmodule Mulberry.Search.GoogleAdsTest do
             "advertiserId" => "AR01614014350098432001",
             "creativeId" => "CR08077733302133325825",
             "format" => "video",
-            "adUrl" => "https://adstransparency.google.com/advertiser/AR01614014350098432001/creative/CR08077733302133325825",
+            "adUrl" =>
+              "https://adstransparency.google.com/advertiser/AR01614014350098432001/creative/CR08077733302133325825",
             "advertiserName" => "Lululemon Athletica Canada Inc.",
             "domain" => "lululemon.com",
             "firstShown" => "2025-02-03T19:49:57.000Z",
@@ -176,7 +180,8 @@ defmodule Mulberry.Search.GoogleAdsTest do
     end
 
     test "handles unexpected response format" do
-      assert {:error, :invalid_response_format} = GoogleAds.to_documents(%{"unexpected" => "format"})
+      assert {:error, :invalid_response_format} =
+               GoogleAds.to_documents(%{"unexpected" => "format"})
     end
   end
 end

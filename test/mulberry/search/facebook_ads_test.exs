@@ -16,14 +16,14 @@ defmodule Mulberry.Search.FacebookAdsTest do
       expect(Retriever, :get, fn module, url, opts ->
         assert module == Mulberry.Retriever.Req
         assert url == "https://api.scrapecreators.com/v1/facebook/adLibrary/company/ads"
-        
+
         # Check params
         assert opts[:params] == %{companyName: "Nike"}
-        
+
         # Check headers
         headers = opts[:headers]
         assert {"x-api-key", "test_api_key"} in headers
-        
+
         {:ok, %Response{status: :ok, content: %{"results" => []}}}
       end)
 
@@ -35,7 +35,7 @@ defmodule Mulberry.Search.FacebookAdsTest do
         params = opts[:params]
         assert params.pageId == "123456789"
         refute Map.has_key?(params, :companyName)
-        
+
         {:ok, %Response{status: :ok, content: %{"results" => []}}}
       end)
 
@@ -51,7 +51,7 @@ defmodule Mulberry.Search.FacebookAdsTest do
         assert params.media_type == "video"
         assert params.cursor == "next_page_cursor"
         assert params.trim == true
-        
+
         {:ok, %Response{status: :ok, content: %{"results" => []}}}
       end)
 
@@ -62,13 +62,13 @@ defmodule Mulberry.Search.FacebookAdsTest do
         cursor: "next_page_cursor",
         trim: true
       ]
-      
+
       assert {:ok, _} = FacebookAds.search("Apple", 20, opts)
     end
 
     test "uses custom retriever when specified" do
       mock_retriever = :custom_retriever
-      
+
       expect(Retriever, :get, fn module, _url, _opts ->
         assert module == mock_retriever
         {:ok, %Response{status: :ok, content: %{"results" => []}}}
@@ -135,9 +135,9 @@ defmodule Mulberry.Search.FacebookAdsTest do
       }
 
       {:ok, documents} = FacebookAds.to_documents(results)
-      
+
       assert length(documents) == 1
-      
+
       [doc] = documents
       assert doc.__struct__ == Mulberry.Document.FacebookAd
       assert doc.ad_archive_id == "1162496978867592"
@@ -160,7 +160,8 @@ defmodule Mulberry.Search.FacebookAdsTest do
     end
 
     test "handles unexpected response format" do
-      assert {:error, :parse_search_results_failed} = FacebookAds.to_documents(%{"unexpected" => "format"})
+      assert {:error, :parse_search_results_failed} =
+               FacebookAds.to_documents(%{"unexpected" => "format"})
     end
 
     test "handles missing snapshot data gracefully" do

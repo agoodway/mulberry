@@ -74,7 +74,10 @@ defmodule Mulberry.Search.Google do
         {:error, :search_failed}
 
       response ->
-        Logger.error("#{__MODULE__}.to_documents/1 unexpected response format: #{inspect(response)}")
+        Logger.error(
+          "#{__MODULE__}.to_documents/1 unexpected response format: #{inspect(response)}"
+        )
+
         {:error, :parse_search_results_failed}
     end
   end

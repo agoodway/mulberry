@@ -41,14 +41,14 @@ defmodule Mulberry.Search.FacebookAdCompanies do
   @spec search(binary(), pos_integer(), keyword()) :: {:ok, map()} | {:error, binary()}
   def search(query, _count \\ 20, opts \\ []) do
     retriever = Keyword.get(opts, :retriever, Mulberry.Retriever.Req)
-    
+
     request_opts = [
       params: %{query: query},
       headers: [
         {"x-api-key", Mulberry.config(:scrapecreators_api_key)}
       ]
     ]
-    
+
     case Mulberry.Retriever.get(retriever, @facebook_companies_url, request_opts) do
       {:ok, response} -> {:ok, response.content}
       {:error, _} = error -> error
@@ -62,16 +62,22 @@ defmodule Mulberry.Search.FacebookAdCompanies do
       %{"searchResults" => companies} when is_list(companies) ->
         docs = Enum.map(companies, &company_to_document/1)
         {:ok, docs}
-        
+
       %{"searchResults" => []} ->
         {:ok, []}
-        
+
       %{"error" => error} ->
-        Logger.error("#{__MODULE__}.to_documents/1 Facebook companies search failed: #{inspect(error)}")
+        Logger.error(
+          "#{__MODULE__}.to_documents/1 Facebook companies search failed: #{inspect(error)}"
+        )
+
         {:error, :search_failed}
-        
+
       response ->
-        Logger.error("#{__MODULE__}.to_documents/1 unexpected response format: #{inspect(response)}")
+        Logger.error(
+          "#{__MODULE__}.to_documents/1 unexpected response format: #{inspect(response)}"
+        )
+
         {:error, :parse_search_results_failed}
     end
   end
@@ -92,7 +98,7 @@ defmodule Mulberry.Search.FacebookAdCompanies do
       page_alias: company["page_alias"],
       page_is_deleted: company["page_is_deleted"]
     }
-    
+
     Mulberry.Document.FacebookAdCompany.new(attrs)
   end
 end
