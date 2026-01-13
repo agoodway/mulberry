@@ -2,16 +2,16 @@ defmodule Mulberry.Retriever.Playwright do
   @moduledoc """
   Retriever implementation using Playwright for browser-based content fetching.
   Useful for pages that require JavaScript execution or dynamic content loading.
-  
+
   Includes bot detection evasion features such as:
   - Realistic user agents
   - Common viewport sizes
   - Random delays between actions
   - Non-headless mode option
   - Human-like scrolling behavior
-  
+
   ## Options
-  
+
   * `:browser` - Browser type to use (:chromium, :firefox, :webkit). Default: :chromium
   * `:headless` - Whether to run browser in headless mode. Default: true
   * `:user_agent` - Custom user agent string. Default: randomly selected from common agents
@@ -23,9 +23,9 @@ defmodule Mulberry.Retriever.Playwright do
   * `:timezone` - Timezone ID. Default: "America/New_York"
   * `:wait_for_selector` - CSS selector to wait for. Default: "body"
   * `:browser_args` - Additional browser launch arguments
-  
+
   ## Examples
-  
+
       # Basic usage with default stealth settings
       Mulberry.Retriever.Playwright.get("https://example.com")
       
@@ -52,7 +52,7 @@ defmodule Mulberry.Retriever.Playwright do
         headless: true
       )
   """
-  
+
   @behaviour Mulberry.Retriever
   require Logger
 
@@ -78,14 +78,13 @@ defmodule Mulberry.Retriever.Playwright do
   @impl true
   def get(url, opts \\ []) do
     responder = Keyword.get(opts, :responder, &Mulberry.Retriever.Response.default_responder/1)
-    
+
     with {:ok, browser} <- launch_browser(opts),
          {:ok, page} <- setup_page(browser, opts),
          {:ok, html} <- fetch_content(page, url, opts) do
-      
       Playwright.Page.close(page)
       Playwright.Browser.close(browser)
-      
+
       responder.(%Mulberry.Retriever.Response{status: :ok, content: html})
     else
       {:error, reason} ->
@@ -98,14 +97,14 @@ defmodule Mulberry.Retriever.Playwright do
   defp launch_browser(opts) do
     browser_type = Keyword.get(opts, :browser, :chromium)
     headless = Keyword.get(opts, :headless, true)
-    
+
     launch_options = %{
       headless: headless,
       args: browser_args(opts)
     }
 
     # Add proxy if configured
-    launch_options = 
+    launch_options =
       case Keyword.get(opts, :proxy) do
         nil -> launch_options
         proxy_config -> Map.put(launch_options, :proxy, proxy_config)
@@ -133,7 +132,8 @@ defmodule Mulberry.Retriever.Playwright do
     base_args ++ custom_args
   end
 
-  @spec setup_page(Playwright.Browser.t(), Keyword.t()) :: {:ok, Playwright.Page.t()} | {:error, any()}
+  @spec setup_page(Playwright.Browser.t(), Keyword.t()) ::
+          {:ok, Playwright.Page.t()} | {:error, any()}
   defp setup_page(browser, opts) do
     user_agent = get_user_agent(opts)
     viewport = get_viewport(opts)
@@ -147,14 +147,15 @@ defmodule Mulberry.Retriever.Playwright do
 
     # Create context with options
     context = Playwright.Browser.new_context(browser, context_options)
-    
+
     # Create page from context
     case Playwright.BrowserContext.new_page(context) do
-      page when is_struct(page) -> 
+      page when is_struct(page) ->
         # Set additional page configurations
         configure_page(page, opts)
         {:ok, page}
-      error -> 
+
+      error ->
         {:error, {:page_creation_failed, error}}
     end
   end
@@ -205,7 +206,8 @@ defmodule Mulberry.Retriever.Playwright do
     end
   end
 
-  @spec fetch_content(Playwright.Page.t(), String.t(), Keyword.t()) :: {:ok, String.t()} | {:error, any()}
+  @spec fetch_content(Playwright.Page.t(), String.t(), Keyword.t()) ::
+          {:ok, String.t()} | {:error, any()}
   defp fetch_content(page, url, opts) do
     stealth_mode = Keyword.get(opts, :stealth_mode, true)
     {min_delay, max_delay} = Keyword.get(opts, :delay_range, {100, 500})
@@ -235,7 +237,7 @@ defmodule Mulberry.Retriever.Playwright do
     if stealth_mode, do: random_delay(min_delay, max_delay)
 
     # Extract HTML content
-    html = 
+    html =
       page
       |> Playwright.Page.locator("html")
       |> Playwright.Locator.inner_html()
@@ -250,17 +252,17 @@ defmodule Mulberry.Retriever.Playwright do
   defp perform_human_actions(page, min_delay, max_delay) do
     # Random scrolling
     scroll_count = :rand.uniform(3) + 1
-    
+
     Enum.each(1..scroll_count, fn _ ->
       scroll_amount = :rand.uniform(300) + 100
-      
+
       Playwright.Page.evaluate(page, """
         window.scrollBy({
           top: #{scroll_amount},
           behavior: 'smooth'
         });
       """)
-      
+
       random_delay(min_delay, max_delay)
     end)
 
@@ -272,6 +274,7 @@ defmodule Mulberry.Retriever.Playwright do
           behavior: 'smooth'
         });
       """)
+
       random_delay(min_delay, max_delay)
     end
 

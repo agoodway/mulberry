@@ -8,11 +8,11 @@ defmodule Mulberry.Retriever.GoogleAdTest do
     setup do
       # Store original value if it exists
       original_value = Application.get_env(:mulberry, :scrapecreators_api_key)
-      
+
       # Set test value
       Application.put_env(:mulberry, :scrapecreators_api_key, "test_api_key")
-      
-      on_exit(fn -> 
+
+      on_exit(fn ->
         # Restore original value or delete
         if original_value do
           Application.put_env(:mulberry, :scrapecreators_api_key, original_value)
@@ -23,13 +23,17 @@ defmodule Mulberry.Retriever.GoogleAdTest do
     end
 
     test "fetches Google ad details successfully" do
-      ad_url = "https://adstransparency.google.com/advertiser/AR01614014350098432001/creative/CR07443539616616939521"
-      
+      ad_url =
+        "https://adstransparency.google.com/advertiser/AR01614014350098432001/creative/CR07443539616616939521"
+
       expect(Req, :get, fn url, opts ->
         assert url == "https://api.scrapecreators.com/v1/google/ad"
         # Check that the headers contain the expected API key
         headers = opts[:headers]
-        assert headers["x-api-key"] == "test_api_key", "Expected headers to contain x-api-key with test_api_key, but got: #{inspect(headers)}"
+
+        assert headers["x-api-key"] == "test_api_key",
+               "Expected headers to contain x-api-key with test_api_key, but got: #{inspect(headers)}"
+
         assert opts[:params] == %{url: ad_url}
 
         {:ok,
@@ -66,14 +70,18 @@ defmodule Mulberry.Retriever.GoogleAdTest do
                %{
                  "destinationUrl" => "shop.lululemon.com/gifts-for-all",
                  "headline" => "lululemonⓇ Official Site - Best Birthday Gifts",
-                 "description" => "Find The Perfect Gifts At lululemon . We Have You Covered . Shop Online For Your Gifts . Birthday Gifts For Everyone ...",
-                 "allText" => "Sponsored Ω lululemon shop.lululemon.com/gifts-for-all lululemonⓇ Official Site - Best Birthday Gifts Find The Perfect Gifts At lululemon . We Have You Covered . Shop Online For Your Gifts . Birthday Gifts For Everyone ...",
-                 "imageUrl" => "https://tpc.googlesyndication.com/archive/simgad/2201045439314643090"
+                 "description" =>
+                   "Find The Perfect Gifts At lululemon . We Have You Covered . Shop Online For Your Gifts . Birthday Gifts For Everyone ...",
+                 "allText" =>
+                   "Sponsored Ω lululemon shop.lululemon.com/gifts-for-all lululemonⓇ Official Site - Best Birthday Gifts Find The Perfect Gifts At lululemon . We Have You Covered . Shop Online For Your Gifts . Birthday Gifts For Everyone ...",
+                 "imageUrl" =>
+                   "https://tpc.googlesyndication.com/archive/simgad/2201045439314643090"
                },
                %{
                  "destinationUrl" => "shop.lululemon.com",
                  "headline" => "Work Pants, But Stretchy",
-                 "description" => "Move In Lightweight, Comfortable Work Pants That Take Your Day In New Directions."
+                 "description" =>
+                   "Move In Lightweight, Comfortable Work Pants That Take Your Day In New Directions."
                }
              ]
            }
@@ -199,7 +207,9 @@ defmodule Mulberry.Retriever.GoogleAdTest do
          }}
       end)
 
-      assert {:custom, response} = GoogleAd.get("https://example.com/ad", responder: custom_responder)
+      assert {:custom, response} =
+               GoogleAd.get("https://example.com/ad", responder: custom_responder)
+
       assert response.status == :ok
     end
   end

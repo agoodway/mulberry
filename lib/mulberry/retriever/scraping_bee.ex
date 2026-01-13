@@ -3,7 +3,7 @@ defmodule Mulberry.Retriever.ScrapingBee do
   Retriever implementation using the ScrapingBee API service for web scraping.
   Handles complex scraping scenarios including JavaScript rendering and proxy rotation.
   """
-  
+
   require Logger
 
   @doc """
