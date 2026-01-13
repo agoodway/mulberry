@@ -34,7 +34,7 @@ defmodule Mulberry.Crawler.Supervisor do
   def start_crawler(opts) do
     # Add the worker supervisor to the options
     opts = Keyword.put(opts, :supervisor, Mulberry.Crawler.WorkerSupervisor)
-    
+
     DynamicSupervisor.start_child(
       Mulberry.Crawler.OrchestratorSupervisor,
       {Mulberry.Crawler.Orchestrator, opts}

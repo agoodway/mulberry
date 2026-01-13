@@ -26,8 +26,9 @@ defmodule Mulberry.Crawler.Default do
       context.mode == :website && context.start_url != "" ->
         case URLManager.extract_domain(context.start_url) do
           {:ok, start_domain} ->
-            URLManager.same_domain?(url, start_domain) && 
+            URLManager.same_domain?(url, start_domain) &&
               !should_skip_url?(url)
+
           _ ->
             false
         end
@@ -65,18 +66,18 @@ defmodule Mulberry.Crawler.Default do
     try do
       # Parse HTML content
       html_tree = Floki.parse_document!(content)
-      
+
       # Extract all links
-      links = 
+      links =
         html_tree
         |> Floki.find("a[href]")
         |> Floki.attribute("href")
         |> Enum.map(&String.trim/1)
         |> Enum.reject(&(&1 == "" || String.starts_with?(&1, "#")))
         |> Enum.uniq()
-      
+
       # Resolve relative URLs
-      absolute_urls = 
+      absolute_urls =
         links
         |> Enum.map(fn link ->
           case URLManager.resolve_url(link, base_url) do
@@ -86,7 +87,7 @@ defmodule Mulberry.Crawler.Default do
         end)
         |> Enum.reject(&is_nil/1)
         |> Enum.filter(&valid_url_scheme?/1)
-      
+
       {:ok, absolute_urls}
     rescue
       error ->
@@ -101,7 +102,10 @@ defmodule Mulberry.Crawler.Default do
 
   @impl true
   def on_url_success(url, result, _context) do
-    Logger.debug("Successfully crawled #{url} - extracted #{map_size(result.data)} data fields and #{length(result.urls)} URLs")
+    Logger.debug(
+      "Successfully crawled #{url} - extracted #{map_size(result.data)} data fields and #{length(result.urls)} URLs"
+    )
+
     :ok
   end
 
@@ -122,20 +126,21 @@ defmodule Mulberry.Crawler.Default do
   defp get_content(%WebPage{markdown: markdown, content: content}) do
     cond do
       # Prefer markdown if available and non-empty
-      is_binary(markdown) and String.trim(markdown) != "" -> 
+      is_binary(markdown) and String.trim(markdown) != "" ->
         markdown
-      
+
       # Fallback to extracting readable text from HTML
-      is_binary(content) and content != "" -> 
+      is_binary(content) and content != "" ->
         case Floki.parse_document(content) do
           {:ok, html_tree} ->
             Mulberry.HTML.to_readable_text(html_tree)
+
           _ ->
             # If parsing fails, return the raw HTML as last resort
             content
         end
-      
-      true -> 
+
+      true ->
         nil
     end
   end
@@ -150,7 +155,7 @@ defmodule Mulberry.Crawler.Default do
       ~r/^ftp:/,
       ~r/\#$/
     ]
-    
+
     Enum.any?(skip_patterns, &Regex.match?(&1, url))
   end
 
@@ -165,7 +170,7 @@ defmodule Mulberry.Crawler.Default do
   defp extract_title(%WebPage{content: content}) when is_binary(content) do
     try do
       html_tree = Floki.parse_document!(content)
-      
+
       html_tree
       |> Floki.find("title")
       |> Floki.text()
@@ -188,16 +193,16 @@ defmodule Mulberry.Crawler.Default do
   defp extract_description(%WebPage{content: content}) when is_binary(content) do
     try do
       html_tree = Floki.parse_document!(content)
-      
+
       # Try meta description first
-      meta_description = 
+      meta_description =
         html_tree
         |> Floki.find("meta[name='description']")
         |> Floki.attribute("content")
         |> List.first()
-      
+
       # Try og:description if no meta description
-      og_description = 
+      og_description =
         if is_nil(meta_description) do
           html_tree
           |> Floki.find("meta[property='og:description']")
@@ -206,7 +211,7 @@ defmodule Mulberry.Crawler.Default do
         else
           meta_description
         end
-      
+
       case og_description do
         nil -> nil
         desc -> String.trim(desc)
@@ -225,18 +230,18 @@ defmodule Mulberry.Crawler.Default do
   defp extract_meta_tags(%WebPage{content: content}) when is_binary(content) do
     try do
       html_tree = Floki.parse_document!(content)
-      
+
       # Extract various meta tags
-      meta_tags = 
+      meta_tags =
         html_tree
         |> Floki.find("meta")
         |> Enum.map(fn meta ->
           name = Floki.attribute(meta, "name") |> List.first()
           property = Floki.attribute(meta, "property") |> List.first()
           content = Floki.attribute(meta, "content") |> List.first()
-          
+
           key = name || property
-          
+
           if key && content do
             {key, content}
           else
@@ -245,7 +250,7 @@ defmodule Mulberry.Crawler.Default do
         end)
         |> Enum.reject(&is_nil/1)
         |> Enum.into(%{})
-      
+
       meta_tags
     rescue
       _ -> %{}

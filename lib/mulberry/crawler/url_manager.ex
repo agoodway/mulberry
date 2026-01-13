@@ -181,7 +181,8 @@ defmodule Mulberry.Crawler.URLManager do
       iex> Mulberry.Crawler.URLManager.compile_patterns(["[invalid"])
       {:error, {:invalid_pattern, "[invalid", _}}
   """
-  @spec compile_patterns([String.t()]) :: {:ok, [Regex.t()]} | {:error, {:invalid_pattern, String.t(), any()}}
+  @spec compile_patterns([String.t()]) ::
+          {:ok, [Regex.t()]} | {:error, {:invalid_pattern, String.t(), any()}}
   def compile_patterns(patterns) when is_list(patterns) do
     results =
       Enum.reduce_while(patterns, {:ok, []}, fn pattern, {:ok, acc} ->

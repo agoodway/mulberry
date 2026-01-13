@@ -18,24 +18,24 @@ defmodule Mulberry.Crawler.Orchestrator do
   defmodule State do
     @moduledoc false
     @type t :: %__MODULE__{
-      crawler_impl: module(),
-      supervisor: pid(),
-      mode: :url_list | :website,
-      start_url: String.t() | nil,
-      max_depth: non_neg_integer(),
-      max_workers: non_neg_integer(),
-      retriever: module() | [module()],
-      respect_robots_txt: boolean(),
-      include_patterns: [Regex.t()],
-      exclude_patterns: [Regex.t()],
-      options: keyword(),
-      url_queue: :queue.queue(),
-      visited_urls: MapSet.t(),
-      active_workers: map(),
-      results: list(),
-      stats: Stats.t(),
-      waiting_callers: [GenServer.from()]
-    }
+            crawler_impl: module(),
+            supervisor: pid(),
+            mode: :url_list | :website,
+            start_url: String.t() | nil,
+            max_depth: non_neg_integer(),
+            max_workers: non_neg_integer(),
+            retriever: module() | [module()],
+            respect_robots_txt: boolean(),
+            include_patterns: [Regex.t()],
+            exclude_patterns: [Regex.t()],
+            options: keyword(),
+            url_queue: :queue.queue(),
+            visited_urls: MapSet.t(),
+            active_workers: map(),
+            results: list(),
+            stats: Stats.t(),
+            waiting_callers: [GenServer.from()]
+          }
 
     defstruct [
       :crawler_impl,
@@ -159,9 +159,10 @@ defmodule Mulberry.Crawler.Orchestrator do
     state = %{state | stats: Stats.start(state.stats)}
 
     # Add URLs to queue
-    state = Enum.reduce(urls, state, fn url, acc ->
-      add_url_to_queue(url, acc, 0)
-    end)
+    state =
+      Enum.reduce(urls, state, fn url, acc ->
+        add_url_to_queue(url, acc, 0)
+      end)
 
     # Start crawling
     state = spawn_workers(state)
@@ -224,7 +225,8 @@ defmodule Mulberry.Crawler.Orchestrator do
     # Process the result
     state =
       case result do
-        {:ok, %{data: data, urls: urls, status_code: status_code, response_time_ms: response_time}} ->
+        {:ok,
+         %{data: data, urls: urls, status_code: status_code, response_time_ms: response_time}} ->
           Logger.debug("Successfully crawled #{url}")
 
           # Update stats with detailed info
@@ -269,13 +271,13 @@ defmodule Mulberry.Crawler.Orchestrator do
   @impl true
   def handle_info({:DOWN, _ref, :process, worker_pid, reason}, state) do
     Logger.warning("Worker #{inspect(worker_pid)} died: #{inspect(reason)}")
-    
+
     # Remove worker from active workers
     state = %{state | active_workers: Map.delete(state.active_workers, worker_pid)}
-    
+
     # Spawn a new worker if needed
     state = spawn_workers(state)
-    
+
     {:noreply, state}
   end
 
@@ -381,11 +383,13 @@ defmodule Mulberry.Crawler.Orchestrator do
 
   defp spawn_workers(state) do
     active_count = map_size(state.active_workers)
-    needed = min(
-      state.max_workers - active_count,
-      :queue.len(state.url_queue)
-    )
-    
+
+    needed =
+      min(
+        state.max_workers - active_count,
+        :queue.len(state.url_queue)
+      )
+
     if needed > 0 do
       Enum.reduce(1..needed, state, fn _, acc ->
         spawn_worker(acc)
@@ -400,23 +404,25 @@ defmodule Mulberry.Crawler.Orchestrator do
       {{:value, {url, depth}}, new_queue} ->
         # Get domain for rate limiting
         {:ok, domain} = URLManager.extract_domain(url)
-        
+
         # Wait for rate limit
         case RateLimiter.consume_token(domain) do
           :ok ->
             # Spawn worker
-            {:ok, worker_pid} = DynamicSupervisor.start_child(
-              state.supervisor,
-              {Worker, [
-                orchestrator: self(),
-                crawler_impl: state.crawler_impl,
-                retriever: state.retriever
-              ] ++ state.options}
-            )
-            
+            {:ok, worker_pid} =
+              DynamicSupervisor.start_child(
+                state.supervisor,
+                {Worker,
+                 [
+                   orchestrator: self(),
+                   crawler_impl: state.crawler_impl,
+                   retriever: state.retriever
+                 ] ++ state.options}
+              )
+
             # Monitor the worker
             Process.monitor(worker_pid)
-            
+
             # Create crawl context
             context = %{
               start_url: state.start_url || url,
@@ -426,21 +432,23 @@ defmodule Mulberry.Crawler.Orchestrator do
               mode: state.mode,
               options: state.options
             }
-            
+
             # Start crawling
             Worker.crawl(worker_pid, url, context)
-            
-            %{state | 
-              url_queue: new_queue,
-              active_workers: Map.put(state.active_workers, worker_pid, %{url: url, depth: depth})
+
+            %{
+              state
+              | url_queue: new_queue,
+                active_workers:
+                  Map.put(state.active_workers, worker_pid, %{url: url, depth: depth})
             }
-            
+
           {:error, :rate_limited} ->
             # Put URL back in queue and wait
             Process.send_after(self(), :retry_spawn, 100)
             state
         end
-        
+
       {:empty, _} ->
         state
     end

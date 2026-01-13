@@ -176,7 +176,9 @@ defmodule Mulberry.Crawler.Sitemap do
         {:ok, entries}
 
       {:ok, :sitemapindex, index_entries} when follow_indexes ->
-        entries = fetch_index_entries(index_entries, retriever, max_depth, follow_indexes, current_depth)
+        entries =
+          fetch_index_entries(index_entries, retriever, max_depth, follow_indexes, current_depth)
+
         {:ok, entries}
 
       {:ok, :sitemapindex, _index_entries} ->

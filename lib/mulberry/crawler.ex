@@ -97,36 +97,37 @@ defmodule Mulberry.Crawler do
       # ... do other work ...
       {:ok, results} = Mulberry.Crawler.Orchestrator.await_completion(orchestrator)
   """
-  @spec crawl_urls([String.t()], keyword()) :: {:ok, [crawl_result()]} | {:ok, pid()} | {:error, any()}
+  @spec crawl_urls([String.t()], keyword()) ::
+          {:ok, [crawl_result()]} | {:ok, pid()} | {:error, any()}
   def crawl_urls(urls, opts \\ []) when is_list(urls) do
     # Ensure supervisor is started
     ensure_supervisor_started(opts)
-    
+
     # Set mode to url_list
     opts = Keyword.put(opts, :mode, :url_list)
-    
+
     # Extract async option
     {async, opts} = Keyword.pop(opts, :async, false)
     {timeout, opts} = Keyword.pop(opts, :timeout, :infinity)
-    
+
     # Set default crawler implementation
     opts = Keyword.put_new(opts, :crawler_impl, Mulberry.Crawler.Default)
-    
+
     # Configure rate limiter if needed
     configure_rate_limiter(opts)
-    
+
     # Start orchestrator
     case Supervisor.start_crawler(opts) do
       {:ok, orchestrator} ->
         # Start crawling
         Orchestrator.crawl_urls(orchestrator, urls)
-        
+
         if async do
           {:ok, orchestrator}
         else
           Orchestrator.await_completion(orchestrator, timeout)
         end
-        
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -173,36 +174,37 @@ defmodule Mulberry.Crawler do
         max_depth: 2
       )
   """
-  @spec crawl_website(String.t(), keyword()) :: {:ok, [crawl_result()]} | {:ok, pid()} | {:error, any()}
+  @spec crawl_website(String.t(), keyword()) ::
+          {:ok, [crawl_result()]} | {:ok, pid()} | {:error, any()}
   def crawl_website(start_url, opts \\ []) when is_binary(start_url) do
     # Ensure supervisor is started
     ensure_supervisor_started(opts)
-    
+
     # Set mode to website
     opts = Keyword.put(opts, :mode, :website)
-    
+
     # Extract async option
     {async, opts} = Keyword.pop(opts, :async, false)
     {timeout, opts} = Keyword.pop(opts, :timeout, :infinity)
-    
+
     # Set default crawler implementation
     opts = Keyword.put_new(opts, :crawler_impl, Mulberry.Crawler.Default)
-    
+
     # Configure rate limiter if needed
     configure_rate_limiter(opts)
-    
+
     # Start orchestrator
     case Supervisor.start_crawler(opts) do
       {:ok, orchestrator} ->
         # Start crawling
         Orchestrator.crawl_website(orchestrator, start_url)
-        
+
         if async do
           {:ok, orchestrator}
         else
           Orchestrator.await_completion(orchestrator, timeout)
         end
-        
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -328,7 +330,7 @@ defmodule Mulberry.Crawler do
       nil ->
         rate_limiter_opts = build_rate_limiter_opts(opts)
         {:ok, _} = Mulberry.Crawler.Supervisor.start_link(rate_limiter_opts: rate_limiter_opts)
-        
+
       _pid ->
         :ok
     end
@@ -341,7 +343,7 @@ defmodule Mulberry.Crawler do
 
   defp build_rate_limiter_opts(opts) do
     rate_limit = Keyword.get(opts, :rate_limit, 1.0)
-    
+
     [
       default_max_tokens: 10,
       default_refill_rate: rate_limit

@@ -20,12 +20,12 @@ defmodule Mulberry.Crawler.Worker do
   defmodule State do
     @moduledoc false
     @type t :: %__MODULE__{
-      orchestrator: pid(),
-      crawler_impl: module(),
-      retriever: module() | [module()],
-      options: keyword()
-    }
-    
+            orchestrator: pid(),
+            crawler_impl: module(),
+            retriever: module() | [module()],
+            options: keyword()
+          }
+
     defstruct [:orchestrator, :crawler_impl, :retriever, :options]
   end
 
@@ -78,15 +78,16 @@ defmodule Mulberry.Crawler.Worker do
     Logger.debug("Worker starting crawl of #{url}")
 
     result = do_crawl(url, context, state)
-    
+
     # Invoke success/failure callbacks
     case result do
       {:ok, _} = success ->
         invoke_callback(:on_url_success, [url, elem(success, 1), context], state)
+
       {:error, reason} ->
         invoke_callback(:on_url_failure, [url, reason, context], state)
     end
-    
+
     send(state.orchestrator, {:crawl_result, self(), url, result})
 
     {:noreply, state}
@@ -138,10 +139,14 @@ defmodule Mulberry.Crawler.Worker do
   defp get_status_code(document) do
     # Try to get status code from document metadata
     cond do
-      Map.has_key?(document, :status_code) -> document.status_code
+      Map.has_key?(document, :status_code) ->
+        document.status_code
+
       Map.has_key?(document, :metadata) && is_map(document.metadata) ->
         document.metadata[:status_code] || 200
-      true -> 200
+
+      true ->
+        200
     end
   end
 

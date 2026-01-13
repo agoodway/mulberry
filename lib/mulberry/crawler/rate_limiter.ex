@@ -28,12 +28,12 @@ defmodule Mulberry.Crawler.RateLimiter do
   defmodule State do
     @moduledoc false
     @type t :: %__MODULE__{
-      buckets: map(),
-      default_max_tokens: non_neg_integer(),
-      default_refill_rate: float(),
-      per_domain_limits: map()
-    }
-    
+            buckets: map(),
+            default_max_tokens: non_neg_integer(),
+            default_refill_rate: float(),
+            per_domain_limits: map()
+          }
+
     defstruct buckets: %{},
               default_max_tokens: 10,
               default_refill_rate: 1.0,

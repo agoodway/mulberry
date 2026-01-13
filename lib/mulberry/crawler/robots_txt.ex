@@ -180,7 +180,11 @@ defmodule Mulberry.Crawler.RobotsTxt do
             # Cache a permissive entry on error
             rules = default_permissive_rules()
             new_state = cache_rules(state, domain, rules)
-            Logger.debug("robots.txt unavailable for #{domain}: #{inspect(reason)}, assuming permissive")
+
+            Logger.debug(
+              "robots.txt unavailable for #{domain}: #{inspect(reason)}, assuming permissive"
+            )
+
             {:reply, {:ok, rules}, new_state}
         end
     end

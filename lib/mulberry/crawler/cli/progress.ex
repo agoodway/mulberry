@@ -104,7 +104,8 @@ defmodule Mulberry.Crawler.CLI.Progress do
   Renders a completed URL (for verbose mode).
   """
   @spec render_url(t(), String.t(), :ok | :error) :: :ok
-  def render_url(%__MODULE__{verbosity: verbosity}, _url, _status) when verbosity in [:quiet, :normal] do
+  def render_url(%__MODULE__{verbosity: verbosity}, _url, _status)
+      when verbosity in [:quiet, :normal] do
     :ok
   end
 
@@ -178,7 +179,7 @@ defmodule Mulberry.Crawler.CLI.Progress do
 
     bar =
       String.duplicate("=", max(0, filled - 1)) <>
-        (if filled > 0, do: ">", else: "") <>
+        if(filled > 0, do: ">", else: "") <>
         String.duplicate(" ", empty)
 
     "[#{bar}] #{percentage}% (#{crawled}/#{total})"
@@ -257,6 +258,7 @@ defmodule Mulberry.Crawler.CLI.Progress do
         |> Enum.take(5)
         |> Enum.map_join("\n", fn {domain, domain_stats} ->
           total = domain_stats.urls_crawled + domain_stats.urls_failed
+
           "  #{truncate_domain(domain, 30)}: #{total} (#{domain_stats.urls_crawled} ok, #{domain_stats.urls_failed} fail)"
         end)
 
