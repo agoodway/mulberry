@@ -3,7 +3,7 @@ defmodule Mulberry.Retriever do
   Behavior module for HTTP content retrieval with support for multiple retriever implementations.
   Provides a unified interface for fetching web content using different strategies.
   """
-  
+
   require Logger
 
   @callback get(String.t(), Keyword.t()) ::

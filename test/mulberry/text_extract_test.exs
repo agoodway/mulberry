@@ -16,6 +16,7 @@ defmodule Mulberry.TextExtractTest do
         %{"name" => "Alice", "age" => 30, "city" => "New York"},
         %{"name" => "Bob", "age" => 25, "city" => "San Francisco"}
       ]
+
       stub(DataExtractionChain, :run, fn ^mock_llm, _schema, _text, _opts ->
         {:ok, expected_data}
       end)
@@ -30,7 +31,7 @@ defmodule Mulberry.TextExtractTest do
       }
 
       text = "Alice is 30 years old and lives in New York. Bob, age 25, is from San Francisco."
-      
+
       assert {:ok, result} = Text.extract(text, schema: schema)
       assert result == expected_data
     end
@@ -43,13 +44,13 @@ defmodule Mulberry.TextExtractTest do
 
     test "uses provided LLM instance when given" do
       custom_llm = %{id: "custom_llm"}
-      
+
       stub(DataExtractionChain, :run, fn ^custom_llm, _schema, _text, _opts ->
         {:ok, [%{"test" => "data"}]}
       end)
 
       schema = %{type: "object", properties: %{test: %{type: "string"}}}
-      
+
       assert {:ok, [%{"test" => "data"}]} = Text.extract("text", schema: schema, llm: custom_llm)
     end
 
@@ -58,14 +59,14 @@ defmodule Mulberry.TextExtractTest do
       stub(Config, :get_llm, fn :extract, _opts -> {:ok, mock_llm} end)
 
       custom_message = "Only extract verified data"
-      
+
       stub(DataExtractionChain, :run, fn ^mock_llm, _schema, _text, opts ->
         assert opts[:system_message] == custom_message
         {:ok, []}
       end)
 
       schema = %{type: "object", properties: %{}}
-      
+
       Text.extract("text", schema: schema, system_message: custom_message)
     end
 
@@ -79,7 +80,7 @@ defmodule Mulberry.TextExtractTest do
       end)
 
       schema = %{type: "object", properties: %{}}
-      
+
       Text.extract("text", schema: schema, verbose: true)
     end
 
@@ -92,7 +93,7 @@ defmodule Mulberry.TextExtractTest do
       end)
 
       schema = %{type: "object", properties: %{}}
-      
+
       assert {:error, :extraction_failed} = Text.extract("text", schema: schema)
     end
 
@@ -100,7 +101,7 @@ defmodule Mulberry.TextExtractTest do
       stub(Config, :get_llm, fn :extract, _opts -> {:error, :no_api_key} end)
 
       schema = %{type: "object", properties: %{}}
-      
+
       assert_raise RuntimeError, ~r/Failed to create LLM:.*no_api_key/, fn ->
         Text.extract("text", schema: schema)
       end
@@ -108,7 +109,7 @@ defmodule Mulberry.TextExtractTest do
 
     test "supports provider-specific LLM configuration" do
       mock_llm = %{provider: :openai}
-      
+
       stub(Config, :get_llm, fn :extract, opts ->
         assert opts[:provider] == :openai
         assert opts[:model] == "gpt-4"
@@ -121,8 +122,8 @@ defmodule Mulberry.TextExtractTest do
       end)
 
       schema = %{type: "object", properties: %{}}
-      
-      Text.extract("text", 
+
+      Text.extract("text",
         schema: schema,
         provider: :openai,
         model: "gpt-4",

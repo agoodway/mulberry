@@ -15,6 +15,7 @@ defmodule Mulberry.HTMLTest do
         {"p", [], ["First paragraph"]},
         {"p", [], ["Second paragraph"]}
       ]
+
       assert HTML.to_readable_text(html_tree) == "First paragraph\n\nSecond paragraph\n"
     end
 
@@ -23,6 +24,7 @@ defmodule Mulberry.HTMLTest do
         {"div", [], ["First div"]},
         {"div", [], ["Second div"]}
       ]
+
       assert HTML.to_readable_text(html_tree) == "First div\n\nSecond div\n"
     end
 
@@ -32,26 +34,31 @@ defmodule Mulberry.HTMLTest do
         {"h2", [], ["Subtitle"]},
         {"p", [], ["Content"]}
       ]
+
       assert HTML.to_readable_text(html_tree) == "Main Title\n\nSubtitle\n\nContent\n"
     end
 
     test "handles lists with line breaks" do
       html_tree = [
-        {"ul", [], [
-          {"li", [], ["Item 1"]},
-          {"li", [], ["Item 2"]}
-        ]}
+        {"ul", [],
+         [
+           {"li", [], ["Item 1"]},
+           {"li", [], ["Item 2"]}
+         ]}
       ]
+
       assert HTML.to_readable_text(html_tree) == "Item 1\nItem 2\n\n"
     end
 
     test "handles nested elements" do
       html_tree = [
-        {"div", [], [
-          {"p", [], ["Nested paragraph"]},
-          {"span", [], ["Inline text"]}
-        ]}
+        {"div", [],
+         [
+           {"p", [], ["Nested paragraph"]},
+           {"span", [], ["Inline text"]}
+         ]}
       ]
+
       assert HTML.to_readable_text(html_tree) == "Nested paragraph\n\nInline text\n"
     end
 
@@ -62,25 +69,29 @@ defmodule Mulberry.HTMLTest do
 
     test "handles inline elements without extra line breaks" do
       html_tree = [
-        {"p", [], [
-          "Text with ",
-          {"strong", [], ["bold"]},
-          " and ",
-          {"em", [], ["italic"]},
-          " elements"
-        ]}
+        {"p", [],
+         [
+           "Text with ",
+           {"strong", [], ["bold"]},
+           " and ",
+           {"em", [], ["italic"]},
+           " elements"
+         ]}
       ]
+
       assert HTML.to_readable_text(html_tree) == "Text with bold and italic elements\n"
     end
 
     test "handles br tags" do
       html_tree = [
-        {"p", [], [
-          "Line 1",
-          {"br", [], []},
-          "Line 2"
-        ]}
+        {"p", [],
+         [
+           "Line 1",
+           {"br", [], []},
+           "Line 2"
+         ]}
       ]
+
       assert HTML.to_readable_text(html_tree) == "Line 1\nLine 2\n"
     end
 
@@ -89,6 +100,7 @@ defmodule Mulberry.HTMLTest do
         {"p", [], []},
         {"div", [], []}
       ]
+
       assert HTML.to_readable_text(html_tree) == "\n\n\n"
     end
 
@@ -96,6 +108,7 @@ defmodule Mulberry.HTMLTest do
       html_tree = [
         {"custom-element", [], ["Custom content"]}
       ]
+
       assert HTML.to_readable_text(html_tree) == "Custom content\n"
     end
   end
@@ -117,6 +130,7 @@ defmodule Mulberry.HTMLTest do
         <li>Item 2</li>
       </ul>
       """
+
       result = HTML.to_markdown(html)
       assert {:ok, markdown} = result
       assert String.contains?(markdown, "# Title")
@@ -144,7 +158,8 @@ defmodule Mulberry.HTMLTest do
       # Adjust based on actual error handling
       html = ""
       result = HTML.to_markdown(html)
-      assert {:ok, _} = result  # Empty HTML should still return ok with empty markdown
+      # Empty HTML should still return ok with empty markdown
+      assert {:ok, _} = result
     end
   end
 end

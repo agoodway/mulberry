@@ -4,7 +4,7 @@ defmodule Mulberry.Research do
 
   This module provides functionality to research topics using various strategies,
   including web searches, local document analysis, and hybrid approaches.
-  
+
   ## Features
 
   - Multiple research strategies (web, local, hybrid)
@@ -84,7 +84,7 @@ defmodule Mulberry.Research do
   @spec research(String.t(), Keyword.t()) :: {:ok, Result.t()} | {:error, term()}
   def research(topic, opts \\ []) when is_binary(topic) do
     strategy = Keyword.get(opts, :strategy, @default_strategy)
-    
+
     with {:ok, chain} <- build_chain(strategy, opts) do
       run(chain, topic, opts)
     end
@@ -118,7 +118,7 @@ defmodule Mulberry.Research do
     search_options = Keyword.get(opts, :search_options, %{})
     retriever_options = Keyword.get(opts, :retriever_options, %{})
     content_length = Keyword.get(opts, :content_length, "medium")
-    
+
     chain_attrs = %{
       strategy: strategy,
       max_sources: max_sources,
@@ -127,33 +127,33 @@ defmodule Mulberry.Research do
       retriever_options: retriever_options,
       content_length: content_length
     }
-    
+
     # Handle search modules configuration
     chain_attrs = add_search_modules_config(chain_attrs, opts)
-    
+
     chain_attrs = if llm, do: Map.put(chain_attrs, :llm, llm), else: chain_attrs
-    
+
     Chain.new(chain_attrs)
   end
-  
+
   defp add_search_modules_config(chain_attrs, opts) do
     cond do
       # Multiple modules specified
       modules = Keyword.get(opts, :search_modules) ->
         Map.put(chain_attrs, :search_modules, normalize_modules(modules))
-      
+
       # Single module specified (backward compatibility)
       module = Keyword.get(opts, :search_module) ->
         chain_attrs
         |> Map.put(:search_module, module)
         |> Map.put(:search_module_options, Keyword.get(opts, :search_module_options, %{}))
-      
+
       # No modules specified, use default
       true ->
         chain_attrs
     end
   end
-  
+
   defp normalize_modules(modules) when is_list(modules) do
     Enum.map(modules, fn
       %{module: _} = module_config -> module_config

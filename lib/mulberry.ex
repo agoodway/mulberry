@@ -11,11 +11,11 @@ defmodule Mulberry do
 
   @doc """
   Retrieves configuration values for the Mulberry application.
-  
+
   First checks application environment, then falls back to system environment variables.
-  
+
   ## Environment Variable Mapping
-  
+
   - `:brave_api_key` → `BRAVE_API_KEY`
   - `:scraping_bee_api_key` → `SCRAPING_BEE_API_KEY`
   - `:openai_api_key` → `OPENAI_API_KEY`
@@ -23,11 +23,11 @@ defmodule Mulberry do
   - `:google_api_key` → `GOOGLE_API_KEY`
   - `:mistral_api_key` → `MISTRAL_API_KEY`
   - `:llm_provider` → `MULBERRY_LLM_PROVIDER`
-  
+
   For other keys, converts to uppercase and prepends `MULBERRY_` if not already present.
-  
+
   ## Examples
-  
+
       # With app config set
       Application.put_env(:mulberry, :brave_api_key, "app_key")
       Mulberry.config(:brave_api_key) #=> "app_key"
@@ -43,7 +43,7 @@ defmodule Mulberry do
       value -> value
     end
   end
-  
+
   defp get_env_var(key) do
     if @env == :test do
       nil
@@ -52,7 +52,7 @@ defmodule Mulberry do
       System.get_env(env_key)
     end
   end
-  
+
   defp map_to_env_var(key) do
     known_mappings = %{
       brave_api_key: "BRAVE_API_KEY",
@@ -64,15 +64,16 @@ defmodule Mulberry do
       mistral_api_key: "MISTRAL_API_KEY",
       llm_provider: "MULBERRY_LLM_PROVIDER"
     }
-    
+
     case Map.get(known_mappings, key) do
       nil -> build_env_key(key)
       env_key -> env_key
     end
   end
-  
+
   defp build_env_key(key) do
     key_str = key |> Atom.to_string() |> String.upcase()
+
     if String.starts_with?(key_str, "MULBERRY_") do
       key_str
     else
@@ -112,9 +113,9 @@ defmodule Mulberry do
 
   @doc """
   Conducts comprehensive research on a topic using various strategies.
-  
+
   ## Examples
-  
+
       # Simple web research
       {:ok, result} = Mulberry.research("quantum computing applications")
       
@@ -124,7 +125,7 @@ defmodule Mulberry do
         max_sources: 10,
         depth: 2
       )
-  
+
   See `Mulberry.Research` for more options and details.
   """
   @spec research(String.t(), Keyword.t()) :: {:ok, Research.Result.t()} | {:error, term()}

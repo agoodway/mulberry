@@ -2,7 +2,7 @@ defmodule Mulberry.Text do
   @moduledoc """
   Provides text processing functionality including splitting, tokenization, summarization, 
   title generation, and classification using language models.
-  
+
   This module offers various text manipulation and analysis functions that leverage
   AI capabilities through configurable language model providers.
   """
@@ -188,13 +188,14 @@ defmodule Mulberry.Text do
       max_words: Keyword.get(opts, :max_words, 14),
       additional_messages: Keyword.get(opts, :additional_messages, [])
     }
-    
+
     # Handle custom system message if provided
-    chain_attrs = if system_message = Keyword.get(opts, :system_message) do
-      Map.put(chain_attrs, :override_system_prompt, system_message)
-    else
-      chain_attrs
-    end
+    chain_attrs =
+      if system_message = Keyword.get(opts, :system_message) do
+        Map.put(chain_attrs, :override_system_prompt, system_message)
+      else
+        chain_attrs
+      end
 
     chain_attrs
     |> TextToTitleChain.new!()
@@ -243,6 +244,7 @@ defmodule Mulberry.Text do
 
     # Ensure categories are provided
     categories = Keyword.get(opts, :categories, [])
+
     if categories == [] do
       raise ArgumentError, "You must provide :categories option with at least 2 categories"
     end
@@ -272,13 +274,14 @@ defmodule Mulberry.Text do
       fallback_category: Keyword.get(opts, :fallback_category),
       additional_messages: Keyword.get(opts, :additional_messages, [])
     }
-    
+
     # Handle custom system message if provided
-    chain_attrs = if system_message = Keyword.get(opts, :system_message) do
-      Map.put(chain_attrs, :override_system_prompt, system_message)
-    else
-      chain_attrs
-    end
+    chain_attrs =
+      if system_message = Keyword.get(opts, :system_message) do
+        Map.put(chain_attrs, :override_system_prompt, system_message)
+      else
+        chain_attrs
+      end
 
     chain_attrs
     |> TextClassificationChain.new!()
@@ -287,6 +290,9 @@ defmodule Mulberry.Text do
 
   @doc """
   Extracts structured data from text using a language model based on a provided schema.
+
+  Supports automatic retry with validation feedback when extraction fails validation.
+  By default, validates against the schema's required fields and retries up to 3 times.
 
   ## Options
     * `:schema` - JSON schema defining the structure to extract (required)
@@ -298,28 +304,38 @@ defmodule Mulberry.Text do
     * `:system_message` - Custom system message to override the default
     * `:llm` - A pre-configured LLM instance (for backward compatibility)
     * `:verbose` - Enable verbose logging for debugging (default: false)
+    * `:max_attempts` - Maximum extraction attempts (default: 3)
+    * `:retry_delay_ms` - Base delay between retries in ms (default: 500)
+    * `:validator` - Custom validator function `(results -> {:ok, results} | {:error, errors})`
+    * `:validate` - Enable/disable all validation (default: true)
 
   ## Examples
 
-      # Extract person information
+      # Extract person information (auto-validates required fields, retries up to 3 times)
       schema = %{
         type: "object",
         properties: %{
           person_name: %{type: "string"},
           person_age: %{type: "number"},
           occupation: %{type: "string"}
-        }
+        },
+        required: ["person_name"]
       }
-      
+
       text = "John Smith is a 32-year-old software engineer."
-      
+
       {:ok, data} = Mulberry.Text.extract(text, schema: schema)
       # Returns: [%{"person_name" => "John Smith", "person_age" => 32, "occupation" => "software engineer"}]
-      
-      # Extract multiple instances
-      text = "John is 30 and works as a teacher. Jane is 25 and is a doctor."
-      {:ok, data} = Mulberry.Text.extract(text, schema: schema)
-      # Returns multiple extracted instances
+
+      # With custom validator
+      {:ok, data} = Mulberry.Text.extract(text,
+        schema: schema,
+        validator: &my_validator/1,
+        max_attempts: 5
+      )
+
+      # Disable validation (single attempt, original behavior)
+      {:ok, data} = Mulberry.Text.extract(text, schema: schema, max_attempts: 1)
   """
   @spec extract(String.t(), Keyword.t()) :: {:ok, list(map())} | {:error, any()}
   def extract(text, opts \\ []) do
@@ -327,8 +343,10 @@ defmodule Mulberry.Text do
 
     # Ensure schema is provided
     schema = Keyword.get(opts, :schema)
+
     if is_nil(schema) do
-      raise ArgumentError, "You must provide :schema option defining the data structure to extract"
+      raise ArgumentError,
+            "You must provide :schema option defining the data structure to extract"
     end
 
     # Get LLM configuration
@@ -347,11 +365,16 @@ defmodule Mulberry.Text do
       end
 
     # Extract options for the chain
-    chain_opts = [
-      system_message: Keyword.get(opts, :system_message),
-      verbose: Keyword.get(opts, :verbose, false)
-    ]
-    |> Enum.filter(fn {_k, v} -> v != nil end)
+    chain_opts =
+      [
+        system_message: Keyword.get(opts, :system_message),
+        verbose: Keyword.get(opts, :verbose, false),
+        validator: Keyword.get(opts, :validator),
+        max_attempts: Keyword.get(opts, :max_attempts),
+        retry_delay_ms: Keyword.get(opts, :retry_delay_ms),
+        validate: Keyword.get(opts, :validate)
+      ]
+      |> Enum.filter(fn {_k, v} -> v != nil end)
 
     DataExtractionChain.run(llm, schema, text, chain_opts)
   end

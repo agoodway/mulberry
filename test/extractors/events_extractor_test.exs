@@ -14,7 +14,7 @@ defmodule Mulberry.Extractors.EventsExtractorTest do
       **Location:** Convention Center Main Hall
       **Audience:** [Professionals] [Students]
       **Categories:** [Technology] [Networking]
-      
+
       ## [Startup Pitch Night](https://startup.example.com/event/14821810) Hybrid
 
       Reservation is required. Watch emerging startups pitch their ideas to investors and industry experts.
@@ -29,9 +29,9 @@ defmodule Mulberry.Extractors.EventsExtractorTest do
       """
 
       {:ok, events} = EventsExtractor.extract(content)
-      
+
       assert length(events) == 2
-      
+
       # Check first event (Tech Conference)
       tech_event = Enum.at(events, 0)
       assert tech_event["title"] == "Tech Conference 2025"
@@ -42,30 +42,34 @@ defmodule Mulberry.Extractors.EventsExtractorTest do
       if tech_event["description"] do
         assert tech_event["description"] =~ "technology conference"
       end
-      
+
       assert tech_event["date"]["startDate"] == "2025-08-10"
       # Recurrence detection might vary
-      assert is_boolean(tech_event["date"]["isRecurring"]) || is_nil(tech_event["date"]["isRecurring"])
-      
+      assert is_boolean(tech_event["date"]["isRecurring"]) ||
+               is_nil(tech_event["date"]["isRecurring"])
+
       # Times should be present
       assert tech_event["time"]["startTime"]
       assert tech_event["time"]["endTime"]
-      
+
       # Location should have venue name at least
       assert tech_event["location"]["venueName"]
-      
+
       # Check for audiences and categories if present
       if tech_event["audience"] do
         assert is_list(tech_event["audience"])
       end
+
       if tech_event["categories"] do
         assert is_list(tech_event["categories"])
       end
-      
+
       # Check second event (Startup Pitch Night)
       pitch_event = Enum.at(events, 1)
-      assert String.contains?(pitch_event["title"], "Startup") || String.contains?(pitch_event["title"], "Pitch")
-      
+
+      assert String.contains?(pitch_event["title"], "Startup") ||
+               String.contains?(pitch_event["title"], "Pitch")
+
       # Check registration if present
       if pitch_event["registration"] do
         assert is_map(pitch_event["registration"])
@@ -82,7 +86,7 @@ defmodule Mulberry.Extractors.EventsExtractorTest do
       """
 
       {:ok, events} = EventsExtractor.extract(content, include_descriptions: false)
-      
+
       event = Enum.at(events, 0)
       refute Map.has_key?(event, "description")
       # Title might include format designation
@@ -99,7 +103,7 @@ defmodule Mulberry.Extractors.EventsExtractorTest do
         "location" => %{"venueName" => "Conference Center"},
         "eventType" => "in-person"
       }
-      
+
       assert {:ok, [^valid_event]} = EventsExtractor.validate_events([valid_event])
     end
 
@@ -108,7 +112,7 @@ defmodule Mulberry.Extractors.EventsExtractorTest do
         "title" => "Test Event"
         # Missing date, time, location, eventType
       }
-      
+
       assert {:error, errors} = EventsExtractor.validate_events([invalid_event])
       assert length(errors) > 0
       assert Enum.any?(errors, &String.contains?(&1, "Missing required fields"))
@@ -122,7 +126,7 @@ defmodule Mulberry.Extractors.EventsExtractorTest do
         "location" => %{"venueName" => "Conference Center"},
         "eventType" => "in-person"
       }
-      
+
       assert {:error, errors} = EventsExtractor.validate_events([invalid_date_event])
       assert Enum.any?(errors, &String.contains?(&1, "Invalid date format"))
     end
@@ -136,9 +140,9 @@ defmodule Mulberry.Extractors.EventsExtractorTest do
         "time" => %{"startTime" => "10:00 AM", "endTime" => "11:00 AM"},
         "audience" => ["adults", "teens"]
       }
-      
+
       [enhanced] = EventsExtractor.enhance_events([event])
-      
+
       assert enhanced["formattedDateTime"] == "2025-08-10 at 10:00 AM"
       assert enhanced["audienceCount"] == 2
       assert get_in(enhanced, ["time", "duration"]) == "10:00 AM - 11:00 AM"

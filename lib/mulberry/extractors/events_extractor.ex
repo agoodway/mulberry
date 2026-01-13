@@ -1,7 +1,7 @@
 defmodule Mulberry.Extractors.EventsExtractor do
   @moduledoc """
   Extracts structured event data from event listings with comprehensive detail.
-  
+
   This extractor captures:
   - Basic event information (title, date, time, location)
   - Rich content (descriptions, images)
@@ -15,7 +15,7 @@ defmodule Mulberry.Extractors.EventsExtractor do
 
   @doc """
   Extracts comprehensive event data from event content.
-  
+
   ## Options
     - `:llm` - The LLM to use for extraction (defaults to OpenAI)
     - `:include_descriptions` - Whether to extract full descriptions (default: true)
@@ -24,21 +24,23 @@ defmodule Mulberry.Extractors.EventsExtractor do
   @spec extract(String.t(), keyword()) :: {:ok, list(map())} | {:error, term()}
   def extract(content, opts \\ []) do
     include_descriptions = Keyword.get(opts, :include_descriptions, true)
-    
+
     schema = build_extraction_schema(include_descriptions)
     system_message = build_system_message()
-    
+
     # Merge the schema and system message into opts
-    extraction_opts = 
+    extraction_opts =
       opts
       |> Keyword.put(:schema, schema)
       |> Keyword.put(:system_message, system_message)
-    
+
     case Text.extract(content, extraction_opts) do
       {:ok, events} when is_list(events) ->
         {:ok, events}
+
       {:ok, event} when is_map(event) ->
         {:ok, [event]}
+
       {:error, reason} ->
         Logger.error("Failed to extract events: #{inspect(reason)}")
         {:error, reason}
@@ -46,29 +48,42 @@ defmodule Mulberry.Extractors.EventsExtractor do
   end
 
   defp build_extraction_schema(include_descriptions) do
-    description_property = if include_descriptions do
-      %{type: "string", description: "Full event description text"}
-    else
-      nil
-    end
+    description_property =
+      if include_descriptions do
+        %{type: "string", description: "Full event description text"}
+      else
+        nil
+      end
 
     base_properties = %{
       title: %{type: "string", description: "Event name"},
       eventId: %{type: "string", description: "Unique identifier from URL if available"},
       url: %{type: "string", description: "Direct link to event details page"},
-      eventType: %{type: "string", enum: ["in-person", "virtual", "hybrid"], description: "Type of event"},
+      eventType: %{
+        type: "string",
+        enum: ["in-person", "virtual", "hybrid"],
+        description: "Type of event"
+      },
       date: %{
         type: "object",
         properties: %{
-          startDate: %{type: "string", format: "date", description: "Start date in YYYY-MM-DD format"},
-          endDate: %{type: "string", format: "date", description: "End date if different from start"},
+          startDate: %{
+            type: "string",
+            format: "date",
+            description: "Start date in YYYY-MM-DD format"
+          },
+          endDate: %{
+            type: "string",
+            format: "date",
+            description: "End date if different from start"
+          },
           isRecurring: %{type: "boolean", description: "Whether event repeats"},
           recurrencePattern: %{type: "string", description: "Description of recurrence pattern"}
         },
         required: ["startDate"]
       },
       time: %{
-        type: "object", 
+        type: "object",
         properties: %{
           startTime: %{type: "string", description: "Start time (e.g., '2:00 PM')"},
           endTime: %{type: "string", description: "End time"},
@@ -113,11 +128,12 @@ defmodule Mulberry.Extractors.EventsExtractor do
     }
 
     # Add description if requested
-    properties = if description_property do
-      Map.put(base_properties, :description, description_property)
-    else
-      base_properties
-    end
+    properties =
+      if description_property do
+        Map.put(base_properties, :description, description_property)
+      else
+        base_properties
+      end
 
     %{
       type: "object",
@@ -129,7 +145,7 @@ defmodule Mulberry.Extractors.EventsExtractor do
   defp build_system_message do
     """
     You are an expert at extracting structured event data from various formats.
-    
+
     Important extraction rules:
     1. Extract ALL events found in the content
     2. Preserve exact times and dates as shown
@@ -148,13 +164,13 @@ defmodule Mulberry.Extractors.EventsExtractor do
   """
   @spec validate_events(list(map())) :: {:ok, list(map())} | {:error, list(String.t())}
   def validate_events(events) when is_list(events) do
-    errors = 
+    errors =
       events
       |> Enum.with_index()
       |> Enum.flat_map(fn {event, index} ->
         validate_event(event, index)
       end)
-    
+
     if Enum.empty?(errors) do
       {:ok, events}
     else
@@ -164,19 +180,19 @@ defmodule Mulberry.Extractors.EventsExtractor do
 
   defp validate_event(event, index) do
     required_fields = ["title", "date", "time", "location", "eventType"]
-    
-    missing_fields = 
+
+    missing_fields =
       required_fields
       |> Enum.reject(&Map.has_key?(event, &1))
-    
-    errors = 
+
+    errors =
       case missing_fields do
         [] -> []
         fields -> ["Event #{index}: Missing required fields: #{Enum.join(fields, ", ")}"]
       end
-    
+
     # Validate date format
-    errors = 
+    errors =
       case Map.get(event, "date") do
         %{"startDate" => date} ->
           if valid_date_format?(date) do
@@ -184,9 +200,11 @@ defmodule Mulberry.Extractors.EventsExtractor do
           else
             ["Event #{index}: Invalid date format: #{date}" | errors]
           end
-        _ -> errors
+
+        _ ->
+          errors
       end
-    
+
     errors
   end
 
@@ -218,7 +236,9 @@ defmodule Mulberry.Extractors.EventsExtractor do
       %{"time" => %{"startTime" => start_time, "endTime" => end_time}} ->
         duration = calculate_duration(start_time, end_time)
         put_in(event, ["time", "duration"], duration)
-      _ -> event
+
+      _ ->
+        event
     end
   end
 
@@ -231,7 +251,9 @@ defmodule Mulberry.Extractors.EventsExtractor do
     case event do
       %{"date" => %{"startDate" => date}, "time" => %{"startTime" => time}} ->
         Map.put(event, "formattedDateTime", "#{date} at #{time}")
-      _ -> event
+
+      _ ->
+        event
     end
   end
 
@@ -239,7 +261,9 @@ defmodule Mulberry.Extractors.EventsExtractor do
     case Map.get(event, "audience") do
       audiences when is_list(audiences) ->
         Map.put(event, "audienceCount", length(audiences))
-      _ -> event
+
+      _ ->
+        event
     end
   end
 end

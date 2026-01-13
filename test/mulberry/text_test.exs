@@ -515,15 +515,17 @@ defmodule Mulberry.TextTest do
         {:ok, chain, %{content: "InvalidCategory"}}
       end)
 
-      assert {:ok, "Unknown"} = Text.classify(text, 
-        categories: categories, 
-        fallback_category: "Unknown"
-      )
+      assert {:ok, "Unknown"} =
+               Text.classify(text,
+                 categories: categories,
+                 fallback_category: "Unknown"
+               )
     end
 
     test "uses examples for few-shot learning" do
       text = "Q3 earnings report shows 20% growth"
       categories = ["Technology", "Business", "Health"]
+
       examples = [
         {"New smartphone released", "Technology"},
         {"Company reports record profits", "Business"},
@@ -548,10 +550,11 @@ defmodule Mulberry.TextTest do
         {:ok, chain, %{content: "Business"}}
       end)
 
-      assert {:ok, "Business"} = Text.classify(text, 
-        categories: categories,
-        examples: examples
-      )
+      assert {:ok, "Business"} =
+               Text.classify(text,
+                 categories: categories,
+                 examples: examples
+               )
     end
 
     test "uses custom system message" do
@@ -575,10 +578,11 @@ defmodule Mulberry.TextTest do
         {:ok, chain, %{content: "A"}}
       end)
 
-      assert {:ok, "A"} = Text.classify(text, 
-        categories: categories,
-        system_message: custom_message
-      )
+      assert {:ok, "A"} =
+               Text.classify(text,
+                 categories: categories,
+                 system_message: custom_message
+               )
     end
 
     test "handles classification errors with fallback" do
@@ -596,10 +600,11 @@ defmodule Mulberry.TextTest do
         {:error, nil, "API error"}
       end)
 
-      assert {:ok, "Uncategorized"} = Text.classify(text, 
-        categories: categories,
-        fallback_category: "Uncategorized"
-      )
+      assert {:ok, "Uncategorized"} =
+               Text.classify(text,
+                 categories: categories,
+                 fallback_category: "Uncategorized"
+               )
     end
 
     test "works with legacy llm option" do
@@ -614,10 +619,11 @@ defmodule Mulberry.TextTest do
         {:ok, chain, %{content: "Tech"}}
       end)
 
-      assert {:ok, "Tech"} = Text.classify(text, 
-        categories: categories,
-        llm: custom_llm
-      )
+      assert {:ok, "Tech"} =
+               Text.classify(text,
+                 categories: categories,
+                 llm: custom_llm
+               )
     end
 
     test "enables verbose logging" do
@@ -636,10 +642,11 @@ defmodule Mulberry.TextTest do
       end)
 
       ExUnit.CaptureLog.capture_log(fn ->
-        assert {:ok, "A"} = Text.classify(text, 
-          categories: categories,
-          verbose: true
-        )
+        assert {:ok, "A"} =
+                 Text.classify(text,
+                   categories: categories,
+                   verbose: true
+                 )
       end) =~ "TextClassificationChain evaluating"
     end
   end

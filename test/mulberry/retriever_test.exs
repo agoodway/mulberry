@@ -1,7 +1,7 @@
 defmodule Mulberry.RetrieverTest do
   use ExUnit.Case, async: false
   use Mimic
-  
+
   setup :set_mimic_global
   import ExUnit.CaptureLog
   doctest Mulberry.Retriever
@@ -13,36 +13,37 @@ defmodule Mulberry.RetrieverTest do
     test "successfully retrieves content with Req" do
       url = Faker.Internet.url()
       opts = [timeout: 5000]
-      
-      expect(Req, :get, fn ^url, ^opts -> 
+
+      expect(Req, :get, fn ^url, ^opts ->
         {:ok, %Response{status: :ok, content: "<html>Content</html>"}}
       end)
-      
-      assert {:ok, %Response{status: :ok, content: "<html>Content</html>"}} = 
-        Retriever.get(Req, url, opts)
+
+      assert {:ok, %Response{status: :ok, content: "<html>Content</html>"}} =
+               Retriever.get(Req, url, opts)
     end
 
     test "handles retriever error" do
       url = Faker.Internet.url()
-      
-      expect(Req, :get, fn ^url, [] -> 
+
+      expect(Req, :get, fn ^url, [] ->
         {:error, :connection_failed}
       end)
-      
+
       assert {:error, :connection_failed} = Retriever.get(Req, url)
     end
 
     test "applies responder function to successful response" do
       url = Faker.Internet.url()
-      custom_responder = fn response -> 
+
+      custom_responder = fn response ->
         {:ok, String.upcase(response.body)}
       end
-      
-      expect(Playwright, :get, fn ^url, opts -> 
+
+      expect(Playwright, :get, fn ^url, opts ->
         assert opts[:responder] == custom_responder
         {:ok, %Response{status: :ok, content: "content"}}
       end)
-      
+
       Retriever.get(Playwright, url, responder: custom_responder)
     end
   end
@@ -51,55 +52,56 @@ defmodule Mulberry.RetrieverTest do
     test "tries modules in order until success" do
       url = Faker.Internet.url()
       modules = [Req, Playwright, ScrapingBee]
-      
+
       # First module fails
-      expect(Req, :get, fn ^url, [] -> 
+      expect(Req, :get, fn ^url, [] ->
         {:error, :timeout}
       end)
-      
+
       # Second module succeeds
-      expect(Playwright, :get, fn ^url, [] -> 
+      expect(Playwright, :get, fn ^url, [] ->
         {:ok, %Response{status: :ok, content: "Success"}}
       end)
-      
+
       # Third module should not be called
       reject(&ScrapingBee.get/2)
-      
-      assert {:ok, %Response{status: :ok, content: "Success"}} = 
-        Retriever.get(modules, url)
+
+      assert {:ok, %Response{status: :ok, content: "Success"}} =
+               Retriever.get(modules, url)
     end
 
     test "returns last error if all modules fail" do
       url = Faker.Internet.url()
       modules = [Req, Playwright]
-      
-      expect(Req, :get, fn ^url, [] -> 
+
+      expect(Req, :get, fn ^url, [] ->
         {:error, :req_failed}
       end)
-      
-      expect(Playwright, :get, fn ^url, [] -> 
+
+      expect(Playwright, :get, fn ^url, [] ->
         {:error, :playwright_failed}
       end)
-      
+
       assert {:error, :playwright_failed} = Retriever.get(modules, url)
     end
 
     test "logs errors when trying multiple modules" do
       url = Faker.Internet.url()
       modules = [Req, Playwright]
-      
-      expect(Req, :get, fn ^url, [] -> 
+
+      expect(Req, :get, fn ^url, [] ->
         {:error, :connection_error}
       end)
-      
-      expect(Playwright, :get, fn ^url, [] -> 
+
+      expect(Playwright, :get, fn ^url, [] ->
         {:ok, %Response{status: :ok, content: "OK"}}
       end)
-      
-      log = capture_log(fn ->
-        assert {:ok, _} = Retriever.get(modules, url)
-      end)
-      
+
+      log =
+        capture_log(fn ->
+          assert {:ok, _} = Retriever.get(modules, url)
+        end)
+
       assert log =~ "Elixir.Mulberry.Retriever.get/2 module=Mulberry.Retriever.Req"
       assert log =~ "Elixir.Mulberry.Retriever.get/2 module=Mulberry.Retriever.Playwright"
     end
@@ -108,15 +110,15 @@ defmodule Mulberry.RetrieverTest do
       url = Faker.Internet.url()
       modules = [Req, Playwright]
       opts = [timeout: 10_000, headers: [{"User-Agent", "Test"}]]
-      
-      expect(Req, :get, fn ^url, ^opts -> 
+
+      expect(Req, :get, fn ^url, ^opts ->
         {:error, :failed}
       end)
-      
-      expect(Playwright, :get, fn ^url, ^opts -> 
+
+      expect(Playwright, :get, fn ^url, ^opts ->
         {:ok, %Response{status: :ok, content: "Some content"}}
       end)
-      
+
       assert {:ok, _} = Retriever.get(modules, url, opts)
     end
   end
