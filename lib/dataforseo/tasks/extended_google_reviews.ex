@@ -191,8 +191,7 @@ defmodule DataForSEO.Tasks.ExtendedGoogleReviews do
   def validate_params(params) when is_map(params) do
     cond do
       not has_business_identifier?(params) ->
-        {:error,
-         {:invalid_params, "One of keyword, cid, or place_id is required"}}
+        {:error, {:invalid_params, "One of keyword, cid, or place_id is required"}}
 
       needs_location?(params) and not has_location?(params) ->
         {:error,
@@ -228,7 +227,9 @@ defmodule DataForSEO.Tasks.ExtendedGoogleReviews do
 
   defp valid_sort_by?(params) do
     case get_param(params, :sort_by) do
-      nil -> true
+      nil ->
+        true
+
       sort_by when is_binary(sort_by) ->
         sort_by in ["newest", "highest_rating", "lowest_rating", "relevant"]
 

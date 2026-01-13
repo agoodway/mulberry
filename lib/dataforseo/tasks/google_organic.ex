@@ -209,16 +209,14 @@ defmodule DataForSEO.Tasks.GoogleOrganic do
         {:error, {:invalid_params, "depth must be between 1 and #{@max_depth}"}}
 
       not valid_device?(params) ->
-        {:error,
-         {:invalid_params, "device must be one of: #{Enum.join(@valid_devices, ", ")}"}}
+        {:error, {:invalid_params, "device must be one of: #{Enum.join(@valid_devices, ", ")}"}}
 
       not valid_os_for_device?(params) ->
         device = get_param(params, :device) || "desktop"
         os_list = if device == "desktop", do: @valid_desktop_os, else: @valid_mobile_os
 
         {:error,
-         {:invalid_params,
-          "os must be one of: #{Enum.join(os_list, ", ")} for #{device} device"}}
+         {:invalid_params, "os must be one of: #{Enum.join(os_list, ", ")} for #{device} device"}}
 
       true ->
         :ok

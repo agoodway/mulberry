@@ -58,14 +58,15 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
 
   describe "event_count/1" do
     test "returns count of events" do
-      result = GoogleEventsResult.new(%{
-        events: [
-          %{title: "Concert 1"},
-          %{title: "Concert 2"},
-          %{title: "Concert 3"}
-        ],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [
+            %{title: "Concert 1"},
+            %{title: "Concert 2"},
+            %{title: "Concert 3"}
+          ],
+          metadata: %{}
+        })
 
       assert GoogleEventsResult.event_count(result) == 3
     end
@@ -79,10 +80,11 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
 
   describe "has_events?/1" do
     test "returns true when events exist" do
-      result = GoogleEventsResult.new(%{
-        events: [%{title: "Concert"}],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [%{title: "Concert"}],
+          metadata: %{}
+        })
 
       assert GoogleEventsResult.has_events?(result) == true
     end
@@ -96,14 +98,15 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
 
   describe "events_by_date/2" do
     test "filters events by date" do
-      result = GoogleEventsResult.new(%{
-        events: [
-          %{title: "Concert 1", date: "Aug 15"},
-          %{title: "Concert 2", date: "Aug 16"},
-          %{title: "Concert 3", date: "Aug 15"}
-        ],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [
+            %{title: "Concert 1", date: "Aug 15"},
+            %{title: "Concert 2", date: "Aug 16"},
+            %{title: "Concert 3", date: "Aug 15"}
+          ],
+          metadata: %{}
+        })
 
       filtered = GoogleEventsResult.events_by_date(result, "Aug 15")
 
@@ -112,10 +115,11 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
     end
 
     test "returns empty list when no matches" do
-      result = GoogleEventsResult.new(%{
-        events: [%{title: "Concert", date: "Aug 15"}],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [%{title: "Concert", date: "Aug 15"}],
+          metadata: %{}
+        })
 
       filtered = GoogleEventsResult.events_by_date(result, "Aug 20")
 
@@ -125,14 +129,15 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
 
   describe "events_with_tickets/1" do
     test "filters events that have tickets_url" do
-      result = GoogleEventsResult.new(%{
-        events: [
-          %{title: "Concert 1", tickets_url: "https://tickets1.com"},
-          %{title: "Concert 2", tickets_url: nil},
-          %{title: "Concert 3", tickets_url: "https://tickets3.com"}
-        ],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [
+            %{title: "Concert 1", tickets_url: "https://tickets1.com"},
+            %{title: "Concert 2", tickets_url: nil},
+            %{title: "Concert 3", tickets_url: "https://tickets3.com"}
+          ],
+          metadata: %{}
+        })
 
       filtered = GoogleEventsResult.events_with_tickets(result)
 
@@ -141,13 +146,14 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
     end
 
     test "returns empty list when no events have tickets" do
-      result = GoogleEventsResult.new(%{
-        events: [
-          %{title: "Concert 1", tickets_url: nil},
-          %{title: "Concert 2"}
-        ],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [
+            %{title: "Concert 1", tickets_url: nil},
+            %{title: "Concert 2"}
+          ],
+          metadata: %{}
+        })
 
       filtered = GoogleEventsResult.events_with_tickets(result)
 
@@ -157,23 +163,24 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
 
   describe "events_by_start_datetime/2" do
     test "filters events by start_datetime" do
-      result = GoogleEventsResult.new(%{
-        events: [
-          %{
-            title: "Concert 1",
-            event_dates: %{start_datetime: "2024-08-15T19:00:00"}
-          },
-          %{
-            title: "Concert 2",
-            event_dates: %{start_datetime: "2024-08-16T20:00:00"}
-          },
-          %{
-            title: "Concert 3",
-            event_dates: %{start_datetime: "2024-08-15T19:00:00"}
-          }
-        ],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [
+            %{
+              title: "Concert 1",
+              event_dates: %{start_datetime: "2024-08-15T19:00:00"}
+            },
+            %{
+              title: "Concert 2",
+              event_dates: %{start_datetime: "2024-08-16T20:00:00"}
+            },
+            %{
+              title: "Concert 3",
+              event_dates: %{start_datetime: "2024-08-15T19:00:00"}
+            }
+          ],
+          metadata: %{}
+        })
 
       filtered = GoogleEventsResult.events_by_start_datetime(result, "2024-08-15T19:00:00")
 
@@ -181,12 +188,13 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
     end
 
     test "returns empty list when no matches" do
-      result = GoogleEventsResult.new(%{
-        events: [
-          %{event_dates: %{start_datetime: "2024-08-15T19:00:00"}}
-        ],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [
+            %{event_dates: %{start_datetime: "2024-08-15T19:00:00"}}
+          ],
+          metadata: %{}
+        })
 
       filtered = GoogleEventsResult.events_by_start_datetime(result, "2024-08-20T19:00:00")
 
@@ -194,13 +202,14 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
     end
 
     test "handles events without event_dates" do
-      result = GoogleEventsResult.new(%{
-        events: [
-          %{title: "Concert 1", event_dates: nil},
-          %{title: "Concert 2"}
-        ],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [
+            %{title: "Concert 1", event_dates: nil},
+            %{title: "Concert 2"}
+          ],
+          metadata: %{}
+        })
 
       filtered = GoogleEventsResult.events_by_start_datetime(result, "2024-08-15T19:00:00")
 
@@ -210,15 +219,16 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
 
   describe "events_in_range/3" do
     test "filters events within datetime range" do
-      result = GoogleEventsResult.new(%{
-        events: [
-          %{event_dates: %{start_datetime: "2024-08-15T19:00:00"}},
-          %{event_dates: %{start_datetime: "2024-08-16T20:00:00"}},
-          %{event_dates: %{start_datetime: "2024-08-17T21:00:00"}},
-          %{event_dates: %{start_datetime: "2024-08-20T19:00:00"}}
-        ],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [
+            %{event_dates: %{start_datetime: "2024-08-15T19:00:00"}},
+            %{event_dates: %{start_datetime: "2024-08-16T20:00:00"}},
+            %{event_dates: %{start_datetime: "2024-08-17T21:00:00"}},
+            %{event_dates: %{start_datetime: "2024-08-20T19:00:00"}}
+          ],
+          metadata: %{}
+        })
 
       filtered =
         GoogleEventsResult.events_in_range(
@@ -231,12 +241,13 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
     end
 
     test "returns empty list when no events in range" do
-      result = GoogleEventsResult.new(%{
-        events: [
-          %{event_dates: %{start_datetime: "2024-08-15T19:00:00"}}
-        ],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [
+            %{event_dates: %{start_datetime: "2024-08-15T19:00:00"}}
+          ],
+          metadata: %{}
+        })
 
       filtered =
         GoogleEventsResult.events_in_range(result, "2024-08-20T00:00:00", "2024-08-25T23:59:59")
@@ -245,12 +256,13 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
     end
 
     test "handles events without event_dates" do
-      result = GoogleEventsResult.new(%{
-        events: [
-          %{title: "Concert", event_dates: nil}
-        ],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [
+            %{title: "Concert", event_dates: nil}
+          ],
+          metadata: %{}
+        })
 
       filtered =
         GoogleEventsResult.events_in_range(result, "2024-08-15T00:00:00", "2024-08-20T23:59:59")
@@ -261,23 +273,24 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
 
   describe "ticket_vendors/1" do
     test "returns unique vendor domains" do
-      result = GoogleEventsResult.new(%{
-        events: [
-          %{
-            information_and_tickets: [
-              %{domain: "www.ticketmaster.com"},
-              %{domain: "www.stubhub.com"}
-            ]
-          },
-          %{
-            information_and_tickets: [
-              %{domain: "www.ticketmaster.com"},
-              %{domain: "www.eventbrite.com"}
-            ]
-          }
-        ],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [
+            %{
+              information_and_tickets: [
+                %{domain: "www.ticketmaster.com"},
+                %{domain: "www.stubhub.com"}
+              ]
+            },
+            %{
+              information_and_tickets: [
+                %{domain: "www.ticketmaster.com"},
+                %{domain: "www.eventbrite.com"}
+              ]
+            }
+          ],
+          metadata: %{}
+        })
 
       vendors = GoogleEventsResult.ticket_vendors(result)
 
@@ -289,17 +302,18 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
     end
 
     test "filters out nil domains" do
-      result = GoogleEventsResult.new(%{
-        events: [
-          %{
-            information_and_tickets: [
-              %{domain: "www.ticketmaster.com"},
-              %{domain: nil}
-            ]
-          }
-        ],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [
+            %{
+              information_and_tickets: [
+                %{domain: "www.ticketmaster.com"},
+                %{domain: nil}
+              ]
+            }
+          ],
+          metadata: %{}
+        })
 
       vendors = GoogleEventsResult.ticket_vendors(result)
 
@@ -307,10 +321,11 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
     end
 
     test "returns empty list when no ticket vendors" do
-      result = GoogleEventsResult.new(%{
-        events: [%{information_and_tickets: nil}],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [%{information_and_tickets: nil}],
+          metadata: %{}
+        })
 
       vendors = GoogleEventsResult.ticket_vendors(result)
 
@@ -320,45 +335,48 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
 
   describe "events_by_vendor/2" do
     test "filters events by vendor domain" do
-      result = GoogleEventsResult.new(%{
-        events: [
-          %{
-            title: "Concert 1",
-            information_and_tickets: [
-              %{domain: "www.ticketmaster.com"}
-            ]
-          },
-          %{
-            title: "Concert 2",
-            information_and_tickets: [
-              %{domain: "www.stubhub.com"}
-            ]
-          },
-          %{
-            title: "Concert 3",
-            information_and_tickets: [
-              %{domain: "www.ticketmaster.com"}
-            ]
-          }
-        ],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [
+            %{
+              title: "Concert 1",
+              information_and_tickets: [
+                %{domain: "www.ticketmaster.com"}
+              ]
+            },
+            %{
+              title: "Concert 2",
+              information_and_tickets: [
+                %{domain: "www.stubhub.com"}
+              ]
+            },
+            %{
+              title: "Concert 3",
+              information_and_tickets: [
+                %{domain: "www.ticketmaster.com"}
+              ]
+            }
+          ],
+          metadata: %{}
+        })
 
       filtered = GoogleEventsResult.events_by_vendor(result, "www.ticketmaster.com")
 
       assert length(filtered) == 2
+
       assert Enum.all?(filtered, fn event ->
                Enum.any?(event.information_and_tickets, &(&1.domain == "www.ticketmaster.com"))
              end)
     end
 
     test "returns empty list when no matches" do
-      result = GoogleEventsResult.new(%{
-        events: [
-          %{information_and_tickets: [%{domain: "www.ticketmaster.com"}]}
-        ],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [
+            %{information_and_tickets: [%{domain: "www.ticketmaster.com"}]}
+          ],
+          metadata: %{}
+        })
 
       filtered = GoogleEventsResult.events_by_vendor(result, "www.stubhub.com")
 
@@ -366,13 +384,14 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
     end
 
     test "handles events without ticket information" do
-      result = GoogleEventsResult.new(%{
-        events: [
-          %{title: "Concert 1", information_and_tickets: nil},
-          %{title: "Concert 2"}
-        ],
-        metadata: %{}
-      })
+      result =
+        GoogleEventsResult.new(%{
+          events: [
+            %{title: "Concert 1", information_and_tickets: nil},
+            %{title: "Concert 2"}
+          ],
+          metadata: %{}
+        })
 
       filtered = GoogleEventsResult.events_by_vendor(result, "www.ticketmaster.com")
 
@@ -382,20 +401,21 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
 
   describe "ticket_urls_for_event/1" do
     test "extracts ticket URLs from event" do
-      event = GoogleEvent.new(%{
-        information_and_tickets: [
-          %{
-            title: "Ticketmaster",
-            url: "https://www.ticketmaster.com/event/123",
-            domain: "www.ticketmaster.com"
-          },
-          %{
-            title: "StubHub",
-            url: "https://www.stubhub.com/event/456",
-            domain: "www.stubhub.com"
-          }
-        ]
-      })
+      event =
+        GoogleEvent.new(%{
+          information_and_tickets: [
+            %{
+              title: "Ticketmaster",
+              url: "https://www.ticketmaster.com/event/123",
+              domain: "www.ticketmaster.com"
+            },
+            %{
+              title: "StubHub",
+              url: "https://www.stubhub.com/event/456",
+              domain: "www.stubhub.com"
+            }
+          ]
+        })
 
       urls = GoogleEventsResult.ticket_urls_for_event(event)
 
@@ -405,15 +425,16 @@ defmodule DataForSEO.Schemas.GoogleEventsResultTest do
     end
 
     test "uses domain as vendor when title is nil" do
-      event = GoogleEvent.new(%{
-        information_and_tickets: [
-          %{
-            title: nil,
-            url: "https://www.ticketmaster.com/event/123",
-            domain: "www.ticketmaster.com"
-          }
-        ]
-      })
+      event =
+        GoogleEvent.new(%{
+          information_and_tickets: [
+            %{
+              title: nil,
+              url: "https://www.ticketmaster.com/event/123",
+              domain: "www.ticketmaster.com"
+            }
+          ]
+        })
 
       urls = GoogleEventsResult.ticket_urls_for_event(event)
 

@@ -338,7 +338,8 @@ defmodule DataForSEO.Tasks.BusinessListings do
 
           not Enum.all?(order_by, &valid_order_by?/1) ->
             {:error,
-             {:invalid_params, "each order_by must be [field, direction] where direction is asc/desc"}}
+             {:invalid_params,
+              "each order_by must be [field, direction] where direction is asc/desc"}}
 
           true ->
             :ok

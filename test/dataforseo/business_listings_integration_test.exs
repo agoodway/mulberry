@@ -93,7 +93,8 @@ defmodule DataForSEO.BusinessListingsIntegrationTest do
         send(test_pid, {:callback_called, result})
       end
 
-      assert {:ok, _pid} = Supervisor.start_task(BusinessListings, task_params, callback: callback)
+      assert {:ok, _pid} =
+               Supervisor.start_task(BusinessListings, task_params, callback: callback)
 
       # The callback should eventually be called (in real scenario when task completes)
       # For this test, we're just verifying the task starts successfully with a callback

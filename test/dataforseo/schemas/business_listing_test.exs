@@ -124,10 +124,11 @@ defmodule DataForSEO.Schemas.BusinessListingTest do
         longitude: -74.006
       }
 
-      id = BusinessListing.generate_id(listing,
-        strategy: :composite_hash,
-        composite_fields: [:cid, :place_id, :latitude, :longitude]
-      )
+      id =
+        BusinessListing.generate_id(listing,
+          strategy: :composite_hash,
+          composite_fields: [:cid, :place_id, :latitude, :longitude]
+        )
 
       assert is_binary(id)
       assert String.length(id) == 32
@@ -154,10 +155,11 @@ defmodule DataForSEO.Schemas.BusinessListingTest do
     test "applies prefix to composite hash" do
       listing = %BusinessListing{cid: "12345", place_id: "ChIJ123"}
 
-      id = BusinessListing.generate_id(listing,
-        strategy: :composite_hash,
-        prefix: "bl_"
-      )
+      id =
+        BusinessListing.generate_id(listing,
+          strategy: :composite_hash,
+          prefix: "bl_"
+        )
 
       assert String.starts_with?(id, "bl_")
       assert String.length(id) == 35

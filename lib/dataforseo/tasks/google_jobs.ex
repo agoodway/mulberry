@@ -207,7 +207,8 @@ defmodule DataForSEO.Tasks.GoogleJobs do
           "employment_type must be a list containing only: #{Enum.join(@valid_employment_types, ", ")}"}}
 
       not valid_location_radius?(params) ->
-        {:error, {:invalid_params, "location_radius must be a number <= #{@max_location_radius} km"}}
+        {:error,
+         {:invalid_params, "location_radius must be a number <= #{@max_location_radius} km"}}
 
       true ->
         :ok

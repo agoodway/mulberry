@@ -353,7 +353,8 @@ defmodule DataForSEO.Tasks.GoogleOrganicTest do
     end
 
     test "returns error when location missing" do
-      assert {:error, {:invalid_params, msg}} = GoogleOrganic.validate_params(%{keyword: "search"})
+      assert {:error, {:invalid_params, msg}} =
+               GoogleOrganic.validate_params(%{keyword: "search"})
 
       assert msg =~ "Location parameter required"
     end

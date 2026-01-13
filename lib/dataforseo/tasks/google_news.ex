@@ -199,9 +199,7 @@ defmodule DataForSEO.Tasks.GoogleNews do
         {:error, {:invalid_params, "depth must be between 1 and #{@max_depth}"}}
 
       not valid_os?(params) ->
-        {:error,
-         {:invalid_params,
-          "os must be one of: #{Enum.join(@valid_os_values, ", ")}"}}
+        {:error, {:invalid_params, "os must be one of: #{Enum.join(@valid_os_values, ", ")}"}}
 
       true ->
         :ok

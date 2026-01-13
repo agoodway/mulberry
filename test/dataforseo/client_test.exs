@@ -30,7 +30,12 @@ defmodule DataForSEO.ClientTest do
         assert url == expected_url
         assert opts[:auth] == {:basic, "test_user:test_pass"}
         assert opts[:json] == payload
-        assert opts[:headers] == [{"content-type", "application/json"}, {"accept", "application/json"}]
+
+        assert opts[:headers] == [
+                 {"content-type", "application/json"},
+                 {"accept", "application/json"}
+               ]
+
         assert opts[:retry] == false
 
         {:ok, %{status: 200, body: %{"status_code" => 20_000, "tasks" => [%{"id" => "task123"}]}}}
@@ -54,7 +59,8 @@ defmodule DataForSEO.ClientTest do
 
     test "handles API error status codes" do
       expect(Req, :post, fn _url, _opts ->
-        {:ok, %{status: 200, body: %{"status_code" => 40_100, "status_message" => "Invalid API key"}}}
+        {:ok,
+         %{status: 200, body: %{"status_code" => 40_100, "status_message" => "Invalid API key"}}}
       end)
 
       assert {:error, {:api_error, 40_100, "Invalid API key"}} =
@@ -124,14 +130,23 @@ defmodule DataForSEO.ClientTest do
   describe "create_live_task/2" do
     test "creates live task successfully with valid credentials" do
       task_type = "business_data/business_listings/search"
-      payload = [%{"categories" => ["pizza_restaurant"], "location_coordinate" => "40.7128,-74.0060,5"}]
+
+      payload = [
+        %{"categories" => ["pizza_restaurant"], "location_coordinate" => "40.7128,-74.0060,5"}
+      ]
+
       expected_url = "https://api.dataforseo.com/v3/#{task_type}/live"
 
       expect(Req, :post, fn url, opts ->
         assert url == expected_url
         assert opts[:auth] == {:basic, "test_user:test_pass"}
         assert opts[:json] == payload
-        assert opts[:headers] == [{"content-type", "application/json"}, {"accept", "application/json"}]
+
+        assert opts[:headers] == [
+                 {"content-type", "application/json"},
+                 {"accept", "application/json"}
+               ]
+
         assert opts[:retry] == false
 
         {:ok,
@@ -169,7 +184,11 @@ defmodule DataForSEO.ClientTest do
 
     test "handles API error responses" do
       expect(Req, :post, fn _url, _opts ->
-        {:ok, %{status: 200, body: %{"status_code" => 40_100, "status_message" => "Invalid parameters"}}}
+        {:ok,
+         %{
+           status: 200,
+           body: %{"status_code" => 40_100, "status_message" => "Invalid parameters"}
+         }}
       end)
 
       assert {:error, {:api_error, 40_100, "Invalid parameters"}} =
@@ -188,7 +207,8 @@ defmodule DataForSEO.ClientTest do
         end
       end)
 
-      assert {:ok, _response} = Client.create_live_task("business_data/business_listings/search", [])
+      assert {:ok, _response} =
+               Client.create_live_task("business_data/business_listings/search", [])
     end
 
     test "handles request timeout" do
