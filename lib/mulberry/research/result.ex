@@ -94,7 +94,7 @@ defmodule Mulberry.Research.Result do
       source_ids: source_ids,
       confidence: confidence
     }
-    
+
     %{result | key_findings: (result.key_findings || []) ++ [finding]}
   end
 
@@ -108,7 +108,7 @@ defmodule Mulberry.Research.Result do
       source_id: source_id,
       location: location
     }
-    
+
     %{result | citations: (result.citations || []) ++ [citation]}
   end
 
@@ -125,7 +125,7 @@ defmodule Mulberry.Research.Result do
         |> Enum.map(& &1.confidence)
         |> Enum.sum()
         |> Kernel./(length(findings))
-      
+
       %{result | confidence_score: avg_confidence}
     end
   end
@@ -141,18 +141,18 @@ defmodule Mulberry.Research.Result do
   def to_string(%__MODULE__{} = result) do
     """
     Research Topic: #{result.topic}
-    
+
     Summary:
     #{result.summary}
-    
+
     Key Findings (#{length(result.key_findings || [])}):
     #{format_findings(result.key_findings)}
-    
+
     Sources (#{length(result.sources || [])}):
     #{format_sources(result.sources)}
-    
+
     Confidence Score: #{format_confidence(result.confidence_score)}
-    
+
     Related Topics: #{Enum.join(result.related_topics || [], ", ")}
     """
   end
@@ -162,7 +162,7 @@ defmodule Mulberry.Research.Result do
   defp validate_required_fields(attrs) do
     required = [:topic, :summary, :sources]
     missing = required -- Map.keys(attrs)
-    
+
     if Enum.empty?(missing) do
       :ok
     else
@@ -176,16 +176,17 @@ defmodule Mulberry.Research.Result do
       {:summary, &is_binary/1, "must be a string"},
       {:sources, &is_list/1, "must be a list"},
       {:key_findings, &(is_nil(&1) or is_list(&1)), "must be a list or nil"},
-      {:confidence_score, &(is_nil(&1) or is_float(&1) or is_integer(&1)), "must be a number or nil"}
+      {:confidence_score, &(is_nil(&1) or is_float(&1) or is_integer(&1)),
+       "must be a number or nil"}
     ]
-    
+
     errors =
       validations
       |> Enum.filter(fn {field, validator, _} ->
         Map.has_key?(attrs, field) and not validator.(Map.get(attrs, field))
       end)
       |> Enum.map(fn {field, _, message} -> "#{field} #{message}" end)
-    
+
     if Enum.empty?(errors) do
       :ok
     else
@@ -195,7 +196,7 @@ defmodule Mulberry.Research.Result do
 
   defp format_findings(nil), do: "None"
   defp format_findings([]), do: "None"
-  
+
   defp format_findings(findings) do
     findings
     |> Enum.with_index(1)
@@ -206,7 +207,7 @@ defmodule Mulberry.Research.Result do
 
   defp format_sources(nil), do: "None"
   defp format_sources([]), do: "None"
-  
+
   defp format_sources(sources) do
     sources
     |> Enum.with_index(1)

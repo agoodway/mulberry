@@ -20,26 +20,26 @@ defmodule Mulberry.Research.Chain do
     field(:chunk_size, :integer, default: 1000)
     field(:chunk_overlap, :integer, default: 100)
     field(:verbose, :boolean, default: false)
-    
+
     # Custom prompts
     field(:search_query_prompt, :string)
     field(:source_analysis_prompt, :string)
     field(:synthesis_prompt, :string)
     field(:finding_extraction_prompt, :string)
-    
+
     # Content generation settings
     field(:content_length, :string, default: "medium")
-    
+
     # Search and retrieval options
     field(:search_options, :map, default: %{})
     field(:retriever_options, :map, default: %{})
-    
+
     # Search modules configuration
     field(:search_modules, {:array, :map}, default: [])
     # Virtual field for backward compatibility
     field(:search_module, :any, virtual: true)
     field(:search_module_options, :map, virtual: true)
-    
+
     # Filtering and ranking
     field(:min_source_relevance, :float, default: 0.7)
     field(:include_domains, {:array, :string}, default: [])
@@ -98,21 +98,21 @@ defmodule Mulberry.Research.Chain do
   @default_search_query_prompt """
   You are a research assistant helping to formulate effective search queries.
   Given the research topic, generate 3-5 search queries that would help gather comprehensive information.
-  
+
   Research topic: <%= @topic %>
-  
+
   Consider different angles and aspects of the topic. Return only the search queries, one per line.
   """
 
   @default_source_analysis_prompt """
   You are analyzing a source document for research purposes.
   Extract the most important and relevant information related to the research topic.
-  
+
   Research topic: <%= @topic %>
-  
+
   Source content:
   <%= @content %>
-  
+
   Provide a structured analysis including:
   1. Key relevant information
   2. Important facts and figures
@@ -124,12 +124,12 @@ defmodule Mulberry.Research.Chain do
   @default_synthesis_prompt """
   You are synthesizing research findings from multiple sources.
   Create a comprehensive summary that integrates information from all sources.
-  
+
   Research topic: <%= @topic %>
-  
+
   Source analyses:
   <%= @analyses %>
-  
+
   Provide:
   1. An executive summary (2-3 paragraphs)
   2. Key findings across all sources
@@ -142,18 +142,18 @@ defmodule Mulberry.Research.Chain do
   @default_finding_extraction_prompt """
   You are extracting specific findings from research analysis.
   Identify discrete, citable findings that directly address the research topic.
-  
+
   Research topic: <%= @topic %>
-  
+
   Analysis:
   <%= @analysis %>
-  
+
   For each finding, provide:
   - The finding statement (clear and concise)
   - Supporting evidence or data
   - Source attribution
   - Confidence level (0.0-1.0)
-  
+
   Format as a list of findings.
   """
 
@@ -182,7 +182,7 @@ defmodule Mulberry.Research.Chain do
   @spec new(attrs :: map()) :: {:ok, t()} | {:error, Ecto.Changeset.t()}
   def new(attrs \\ %{}) do
     attrs = ensure_llm(attrs)
-    
+
     %Chain{}
     |> cast(attrs, @create_fields)
     |> validate_required(@required_fields)
@@ -190,7 +190,10 @@ defmodule Mulberry.Research.Chain do
     |> validate_number(:search_depth, greater_than: 0, less_than_or_equal_to: 3)
     |> validate_number(:chunk_size, greater_than: 0)
     |> validate_number(:chunk_overlap, greater_than_or_equal_to: 0)
-    |> validate_number(:min_source_relevance, greater_than_or_equal_to: 0, less_than_or_equal_to: 1)
+    |> validate_number(:min_source_relevance,
+      greater_than_or_equal_to: 0,
+      less_than_or_equal_to: 1
+    )
     |> Utils.validate_llm_is_struct()
     |> apply_action(:insert)
   end
@@ -217,7 +220,9 @@ defmodule Mulberry.Research.Chain do
   Returns the source analysis prompt, using default if not customized.
   """
   @spec get_source_analysis_prompt(t()) :: String.t()
-  def get_source_analysis_prompt(%Chain{source_analysis_prompt: nil}), do: @default_source_analysis_prompt
+  def get_source_analysis_prompt(%Chain{source_analysis_prompt: nil}),
+    do: @default_source_analysis_prompt
+
   def get_source_analysis_prompt(%Chain{source_analysis_prompt: prompt}), do: prompt
 
   @doc """
@@ -231,12 +236,14 @@ defmodule Mulberry.Research.Chain do
   Returns the finding extraction prompt, using default if not customized.
   """
   @spec get_finding_extraction_prompt(t()) :: String.t()
-  def get_finding_extraction_prompt(%Chain{finding_extraction_prompt: nil}), do: @default_finding_extraction_prompt
+  def get_finding_extraction_prompt(%Chain{finding_extraction_prompt: nil}),
+    do: @default_finding_extraction_prompt
+
   def get_finding_extraction_prompt(%Chain{finding_extraction_prompt: prompt}), do: prompt
 
   @doc """
   Gets the normalized search modules configuration from the chain.
-  
+
   Handles backward compatibility by converting single search_module to modules list.
   """
   @spec get_search_modules(t()) :: [%{module: module(), options: map(), weight: float()}]
@@ -245,22 +252,26 @@ defmodule Mulberry.Research.Chain do
       # If search_modules is populated, use it
       chain.search_modules != [] ->
         normalize_search_modules(chain.search_modules)
-      
+
       # Backward compatibility: if search_module is set
       chain.search_module != nil ->
-        [%{
-          module: chain.search_module,
-          options: chain.search_module_options || %{},
-          weight: 1.0
-        }]
-      
+        [
+          %{
+            module: chain.search_module,
+            options: chain.search_module_options || %{},
+            weight: 1.0
+          }
+        ]
+
       # Default to Brave search
       true ->
-        [%{
-          module: Mulberry.Search.Brave,
-          options: %{},
-          weight: 1.0
-        }]
+        [
+          %{
+            module: Mulberry.Search.Brave,
+            options: %{},
+            weight: 1.0
+          }
+        ]
     end
   end
 
@@ -285,8 +296,10 @@ defmodule Mulberry.Research.Chain do
           String.replace(acc, "%{#{key}}", to_string(value))
         end)
       end)
-    
-    Enum.map_join(errors, "; ", fn {field, messages} -> "#{field}: #{Enum.join(messages, ", ")}" end)
+
+    Enum.map_join(errors, "; ", fn {field, messages} ->
+      "#{field}: #{Enum.join(messages, ", ")}"
+    end)
   end
 
   defp normalize_search_modules(modules) do

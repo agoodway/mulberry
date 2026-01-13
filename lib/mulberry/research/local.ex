@@ -24,7 +24,7 @@ defmodule Mulberry.Research.Local do
   @spec research(String.t(), Chain.t(), Keyword.t()) :: {:ok, Result.t()} | {:error, term()}
   def research(topic, %Chain{} = chain, opts \\ []) do
     opts = Keyword.put(opts, :topic, topic)
-    
+
     with {:ok, sources} <- gather_sources(topic, chain, opts),
          _ <- maybe_call_progress(opts, :sources_gathered, %{count: length(sources)}),
          {:ok, analysis} <- analyze_sources(sources, chain, opts),
@@ -37,23 +37,24 @@ defmodule Mulberry.Research.Local do
   Gathers local document sources for the research topic.
   """
   @impl true
-  @spec gather_sources(String.t(), Chain.t(), Keyword.t()) :: {:ok, [Document.t()]} | {:error, term()}
+  @spec gather_sources(String.t(), Chain.t(), Keyword.t()) ::
+          {:ok, [Document.t()]} | {:error, term()}
   def gather_sources(topic, %Chain{} = chain, opts \\ []) do
     search_paths = Keyword.get(opts, :search_paths, ["."])
     file_patterns = Keyword.get(opts, :file_patterns, ["*.txt", "*.md", "*.pdf"])
-    
+
     with {:ok, file_paths} <- find_files(search_paths, file_patterns),
          _ <- maybe_log(chain, "Found #{length(file_paths)} files to search"),
          {:ok, relevant_files} <- find_relevant_files(file_paths, topic, chain, opts),
          {:ok, documents} <- load_documents(relevant_files, chain) do
-      
       selected_docs = Enum.take(documents, chain.max_sources)
-      
-      _ = maybe_call_progress(opts, :documents_selected, %{
-        total_found: length(documents),
-        selected: length(selected_docs)
-      })
-      
+
+      _ =
+        maybe_call_progress(opts, :documents_selected, %{
+          total_found: length(documents),
+          selected: length(selected_docs)
+        })
+
       {:ok, selected_docs}
     end
   end
@@ -65,17 +66,18 @@ defmodule Mulberry.Research.Local do
   @spec analyze_sources([Document.t()], Chain.t(), Keyword.t()) :: {:ok, map()} | {:error, term()}
   def analyze_sources(sources, %Chain{} = chain, opts \\ []) do
     topic = Keyword.get(opts, :topic, "research")
-    
+
     analyses =
       sources
       |> Enum.with_index()
       |> Enum.map(fn {source, index} ->
-        _ = maybe_call_progress(opts, :analyzing_source, %{
-          current: index + 1,
-          total: length(sources),
-          file: get_source_path(source)
-        })
-        
+        _ =
+          maybe_call_progress(opts, :analyzing_source, %{
+            current: index + 1,
+            total: length(sources),
+            file: get_source_path(source)
+          })
+
         case analyze_single_source(source, topic, chain) do
           {:ok, analysis} -> {source, analysis}
           {:error, _} -> nil
@@ -83,12 +85,13 @@ defmodule Mulberry.Research.Local do
       end)
       |> Enum.reject(&is_nil/1)
       |> Map.new()
-    
-    {:ok, %{
-      source_analyses: analyses,
-      source_count: length(sources),
-      analyzed_count: map_size(analyses)
-    }}
+
+    {:ok,
+     %{
+       source_analyses: analyses,
+       source_count: length(sources),
+       analyzed_count: map_size(analyses)
+     }}
   end
 
   @doc """
@@ -98,11 +101,10 @@ defmodule Mulberry.Research.Local do
   @spec synthesize_findings(map(), Chain.t(), Keyword.t()) :: {:ok, Result.t()} | {:error, term()}
   def synthesize_findings(%{source_analyses: analyses} = analysis_data, %Chain{} = chain, opts) do
     topic = Keyword.get(opts, :topic, "research")
-    
+
     with {:ok, synthesis} <- generate_synthesis(analyses, topic, chain),
          {:ok, findings} <- extract_findings(synthesis, topic, chain),
          sources <- Map.keys(analyses) do
-      
       result = %{
         topic: topic,
         summary: synthesis.summary,
@@ -116,7 +118,7 @@ defmodule Mulberry.Research.Local do
           timestamp: DateTime.utc_now()
         }
       }
-      
+
       result
       |> Result.new!()
       |> Result.calculate_confidence()
@@ -137,7 +139,7 @@ defmodule Mulberry.Research.Local do
       end)
       |> Enum.uniq()
       |> Enum.filter(&Elixir.File.regular?/1)
-    
+
     {:ok, files}
   end
 
@@ -152,7 +154,7 @@ defmodule Mulberry.Research.Local do
       |> Enum.filter(fn {_, score} -> score >= chain.min_source_relevance end)
       |> Enum.sort_by(fn {_, score} -> score end, :desc)
       |> Enum.map(fn {path, _} -> path end)
-    
+
     {:ok, scored_files}
   end
 
@@ -161,9 +163,9 @@ defmodule Mulberry.Research.Local do
     # Could be enhanced with content sampling
     filename = Path.basename(path) |> String.downcase()
     topic_words = String.split(topic, ~r/\s+/) |> Enum.map(&String.downcase/1)
-    
+
     matches = Enum.count(topic_words, &String.contains?(filename, &1))
-    
+
     # Normalize score between 0 and 1
     min(matches / length(topic_words), 1.0)
   end
@@ -178,7 +180,7 @@ defmodule Mulberry.Research.Local do
         end
       end)
       |> Enum.reject(&is_nil/1)
-    
+
     {:ok, documents}
   end
 
@@ -187,9 +189,9 @@ defmodule Mulberry.Research.Local do
       # Chunk if needed
       chunks = Text.split(text)
       analysis_text = Enum.join(Enum.take(chunks, 10), "\n\n")
-      
+
       prompt = Chain.get_source_analysis_prompt(chain)
-      
+
       messages =
         [
           PromptTemplate.new!(%{
@@ -201,7 +203,7 @@ defmodule Mulberry.Research.Local do
           topic: topic,
           content: analysis_text
         })
-      
+
       run_llm(chain, messages)
     end
   end
@@ -214,9 +216,9 @@ defmodule Mulberry.Research.Local do
         path = get_source_path(source)
         "Source: #{path}\n#{analysis}"
       end)
-    
+
     prompt = Chain.get_synthesis_prompt(chain)
-    
+
     messages =
       [
         PromptTemplate.new!(%{
@@ -228,18 +230,19 @@ defmodule Mulberry.Research.Local do
         topic: topic,
         analyses: analyses_text
       })
-    
+
     case run_llm(chain, messages) do
       {:ok, response} ->
         {:ok, parse_synthesis_response(response)}
-      
-      error -> error
+
+      error ->
+        error
     end
   end
 
   defp extract_findings(synthesis, topic, %Chain{} = chain) do
     prompt = Chain.get_finding_extraction_prompt(chain)
-    
+
     messages =
       [
         PromptTemplate.new!(%{
@@ -251,20 +254,21 @@ defmodule Mulberry.Research.Local do
         topic: topic,
         analysis: synthesis.summary
       })
-    
+
     case run_llm(chain, messages) do
       {:ok, response} ->
         findings = parse_findings_response(response)
         {:ok, findings}
-      
-      error -> error
+
+      error ->
+        error
     end
   end
 
   defp parse_synthesis_response(response) do
     # Reuse the parsing logic from Web module
     sections = String.split(response, ~r/\n{2,}/)
-    
+
     %{
       summary: Enum.at(sections, 0, response),
       themes: extract_list_section(response, "themes"),
@@ -288,15 +292,16 @@ defmodule Mulberry.Research.Local do
 
   defp extract_list_section(text, pattern) do
     regex = ~r/#{pattern}[:\s]*\n((?:[-*•].+\n?)+)/i
-    
+
     case Regex.run(regex, text) do
       [_, section] ->
         section
         |> String.split(~r/\n[-*•]/)
         |> Enum.map(&String.trim/1)
         |> Enum.reject(&(&1 == ""))
-      
-      _ -> []
+
+      _ ->
+        []
     end
   end
 
