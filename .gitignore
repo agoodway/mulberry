@@ -38,3 +38,4 @@ mulberry-*.tar
 # Generated JSON files from mix tasks
 business_listings.json
 *.json
+crawl_data/
