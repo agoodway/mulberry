@@ -93,13 +93,14 @@ defmodule Mix.Tasks.GoogleReviews do
   """
   @spec build_task_params(keyword()) :: map()
   def build_task_params(opts) do
-    params = %{}
-    |> maybe_put(:keyword, opts[:keyword])
-    |> maybe_put(:cid, opts[:cid])
-    |> maybe_put(:place_id, opts[:place_id])
-    |> maybe_put(:depth, opts[:depth])
-    |> maybe_put(:sort_by, opts[:sort_by])
-    |> maybe_put(:language_code, opts[:language])
+    params =
+      %{}
+      |> maybe_put(:keyword, opts[:keyword])
+      |> maybe_put(:cid, opts[:cid])
+      |> maybe_put(:place_id, opts[:place_id])
+      |> maybe_put(:depth, opts[:depth])
+      |> maybe_put(:sort_by, opts[:sort_by])
+      |> maybe_put(:language_code, opts[:language])
 
     # Add location if provided, or use default for CID/place_id
     cond do
@@ -186,7 +187,8 @@ defmodule Mix.Tasks.GoogleReviews do
     end
 
     # Keyword requires explicit location
-    if params[:keyword] && !params[:location_name] && !params[:location_code] && !params[:location_coordinate] do
+    if params[:keyword] && !params[:location_name] && !params[:location_code] &&
+         !params[:location_coordinate] do
       Mix.raise("--location required when using --keyword")
     end
 
@@ -220,10 +222,17 @@ defmodule Mix.Tasks.GoogleReviews do
 
   defp display_location(params) do
     cond do
-      params[:location_name] -> Mix.shell().info("Location: #{params[:location_name]}")
-      params[:location_code] -> Mix.shell().info("Location Code: #{params[:location_code]}")
-      params[:location_coordinate] -> Mix.shell().info("Location Coordinate: #{params[:location_coordinate]}")
-      true -> nil
+      params[:location_name] ->
+        Mix.shell().info("Location: #{params[:location_name]}")
+
+      params[:location_code] ->
+        Mix.shell().info("Location Code: #{params[:location_code]}")
+
+      params[:location_coordinate] ->
+        Mix.shell().info("Location Coordinate: #{params[:location_coordinate]}")
+
+      true ->
+        nil
     end
   end
 

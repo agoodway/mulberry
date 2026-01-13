@@ -97,19 +97,19 @@ defmodule Mix.Tasks.Extract do
   @impl Mix.Task
   def run(args) do
     {opts, _, _} = parse_args(args)
-    
+
     # Start the application
     Mix.Task.run("app.start")
-    
+
     # Validate input options
     validate_options(opts)
-    
+
     # Get input text
     text = get_input_text(opts)
-    
+
     # Get schema
     schema = get_schema(opts)
-    
+
     # Extract data
     info("Extracting data...")
     extract_and_output(text, schema, opts)
@@ -164,25 +164,31 @@ defmodule Mix.Tasks.Extract do
   defp validate_options(opts) do
     # Check input source
     input_count = Enum.count([:text, :file, :url], &Keyword.has_key?(opts, &1))
+
     if input_count == 0 do
       Mix.raise("You must provide one of: --text, --file, or --url")
     end
+
     if input_count > 1 do
       Mix.raise("You can only provide one input source: --text, --file, or --url")
     end
 
     # Check schema source
     schema_count = Enum.count([:schema, :schema_file], &Keyword.has_key?(opts, &1))
+
     if schema_count == 0 do
       Mix.raise("You must provide either --schema or --schema-file")
     end
+
     if schema_count > 1 do
       Mix.raise("You can only provide one schema source: --schema or --schema-file")
     end
 
     # Validate retriever option
     if opts[:retriever] && opts[:retriever] not in ["req", "playwright", "scrapingbee"] do
-      Mix.raise("Invalid retriever: #{opts[:retriever]}. Must be one of: req, playwright, scrapingbee")
+      Mix.raise(
+        "Invalid retriever: #{opts[:retriever]}. Must be one of: req, playwright, scrapingbee"
+      )
     end
 
     # Validate output format
@@ -193,32 +199,32 @@ defmodule Mix.Tasks.Extract do
 
   defp get_input_text(opts) do
     cond do
-      opts[:text] -> 
+      opts[:text] ->
         opts[:text]
-        
-      opts[:file] -> 
+
+      opts[:file] ->
         if opts[:verbose], do: info("Reading from file: #{opts[:file]}")
         File.read!(opts[:file])
-        
-      opts[:url] -> 
+
+      opts[:url] ->
         fetch_from_url(opts[:url], opts)
     end
   end
 
   defp fetch_from_url(url, opts) do
     info("Fetching content from: #{url}")
-    
+
     # Create a WebPage document
     web_page = Mulberry.Document.WebPage.new(%{url: url})
-    
+
     # Build retriever options
     retriever_opts = build_retriever_opts(opts)
-    
+
     # Load the document
     case Mulberry.Document.load(web_page, retriever_opts) do
       {:ok, loaded_page} ->
         extract_text_from_document(loaded_page, opts)
-        
+
       {:error, reason, _} ->
         Mix.raise("Failed to fetch URL: #{inspect(reason)}")
     end
@@ -226,74 +232,82 @@ defmodule Mix.Tasks.Extract do
 
   defp extract_text_from_document(loaded_page, opts) do
     case Mulberry.Document.to_text(loaded_page) do
-      {:ok, text} -> 
+      {:ok, text} ->
         if opts[:verbose], do: info("Successfully fetched #{String.length(text)} characters")
         text
-      {:error, reason} -> 
+
+      {:error, reason} ->
         Mix.raise("Failed to extract text from URL: #{inspect(reason)}")
     end
   end
 
   defp build_retriever_opts(opts) do
     retriever_opts = []
-    
+
     # Set retriever module
-    retriever_opts = if opts[:retriever] do
-      retriever_module = case opts[:retriever] do
-        "req" -> Mulberry.Retriever.Req
-        "playwright" -> Mulberry.Retriever.Playwright
-        "scrapingbee" -> Mulberry.Retriever.ScrapingBee
-        _ -> Mulberry.Retriever.Req
+    retriever_opts =
+      if opts[:retriever] do
+        retriever_module =
+          case opts[:retriever] do
+            "req" -> Mulberry.Retriever.Req
+            "playwright" -> Mulberry.Retriever.Playwright
+            "scrapingbee" -> Mulberry.Retriever.ScrapingBee
+            _ -> Mulberry.Retriever.Req
+          end
+
+        Keyword.put(retriever_opts, :retriever, retriever_module)
+      else
+        retriever_opts
       end
-      Keyword.put(retriever_opts, :retriever, retriever_module)
-    else
-      retriever_opts
-    end
-    
+
     # Add Playwright-specific options
-    retriever_opts = retriever_opts
-    |> maybe_add_option(:browser, opts[:browser])
-    |> maybe_add_option(:headless, opts[:headless])
-    |> maybe_add_option(:wait_for, opts[:wait_for])
-    |> maybe_add_option(:timeout, opts[:timeout])
-    |> maybe_add_option(:stealth, opts[:stealth])
-    
+    retriever_opts =
+      retriever_opts
+      |> maybe_add_option(:browser, opts[:browser])
+      |> maybe_add_option(:headless, opts[:headless])
+      |> maybe_add_option(:wait_for, opts[:wait_for])
+      |> maybe_add_option(:timeout, opts[:timeout])
+      |> maybe_add_option(:stealth, opts[:stealth])
+
     if opts[:verbose] && retriever_opts != [] do
       info("Retriever options: #{inspect(retriever_opts)}")
     end
-    
+
     retriever_opts
   end
 
   defp get_schema(opts) do
-    json_string = cond do
-      opts[:schema] -> 
-        opts[:schema]
-        
-      opts[:schema_file] -> 
-        if opts[:verbose], do: info("Reading schema from: #{opts[:schema_file]}")
-        File.read!(opts[:schema_file])
-    end
-    
+    json_string =
+      cond do
+        opts[:schema] ->
+          opts[:schema]
+
+        opts[:schema_file] ->
+          if opts[:verbose], do: info("Reading schema from: #{opts[:schema_file]}")
+          File.read!(opts[:schema_file])
+      end
+
     case Jason.decode(json_string) do
-      {:ok, schema} -> 
+      {:ok, schema} ->
         if opts[:verbose], do: info("Schema loaded successfully")
         schema
-      {:error, error} -> 
+
+      {:error, error} ->
         Mix.raise("Invalid JSON in schema: #{inspect(error)}")
     end
   end
 
   defp extract_and_output(text, schema, opts) do
     # Build extraction options
-    extract_opts = build_extract_opts(opts)
-    |> Keyword.put(:schema, schema)
-    
+    extract_opts =
+      build_extract_opts(opts)
+      |> Keyword.put(:schema, schema)
+
     # Perform extraction
     case Mulberry.Text.extract(text, extract_opts) do
       {:ok, extracted_data} ->
         handle_success(extracted_data, opts)
-        
+
       {:error, reason} ->
         Mix.raise("Extraction failed: #{inspect(reason)}")
     end
@@ -310,15 +324,16 @@ defmodule Mix.Tasks.Extract do
 
   defp handle_success(extracted_data, opts) do
     output_format = opts[:output] || "text"
-    
-    output = case output_format do
-      "json" -> format_json_output(extracted_data, opts)
-      "text" -> format_text_output(extracted_data)
-    end
-    
+
+    output =
+      case output_format do
+        "json" -> format_json_output(extracted_data, opts)
+        "text" -> format_text_output(extracted_data)
+      end
+
     # Display output
     info(output)
-    
+
     # Save if requested
     if opts[:save] do
       File.write!(opts[:save], output)
@@ -343,10 +358,12 @@ defmodule Mix.Tasks.Extract do
     |> Enum.with_index(1)
     |> Enum.map_join("\n\n", fn {item, index} ->
       header = "=== Item #{index} ==="
-      fields = Enum.map_join(item, "\n", fn {key, value} -> 
-        "#{key}: #{format_value(value)}" 
-      end)
-      
+
+      fields =
+        Enum.map_join(item, "\n", fn {key, value} ->
+          "#{key}: #{format_value(value)}"
+        end)
+
       "#{header}\n#{fields}"
     end)
   end
@@ -357,5 +374,7 @@ defmodule Mix.Tasks.Extract do
   defp maybe_add_option(opts, _key, nil), do: opts
   defp maybe_add_option(opts, key, value), do: Keyword.put(opts, key, value)
   defp maybe_add_option(opts, _key, nil, _transform), do: opts
-  defp maybe_add_option(opts, key, value, transform), do: Keyword.put(opts, key, transform.(value))
+
+  defp maybe_add_option(opts, key, value, transform),
+    do: Keyword.put(opts, key, transform.(value))
 end

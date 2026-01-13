@@ -60,34 +60,35 @@ defmodule Mix.Tasks.Research do
 
   @impl Mix.Task
   def run(args) do
-    {opts, args_list, _} = OptionParser.parse(args,
-      switches: [
-        strategy: :string,
-        max_sources: :integer,
-        depth: :integer,
-        format: :string,
-        save: :string,
-        verbose: :boolean,
-        search_paths: :string,
-        file_patterns: :string,
-        domains: :string,
-        exclude_domains: :string,
-        content_length: :string,
-        search_module: :string,
-        search_modules: :string
-      ],
-      aliases: [
-        s: :strategy,
-        m: :max_sources,
-        d: :depth,
-        f: :format,
-        v: :verbose,
-        c: :content_length
-      ]
-    )
+    {opts, args_list, _} =
+      OptionParser.parse(args,
+        switches: [
+          strategy: :string,
+          max_sources: :integer,
+          depth: :integer,
+          format: :string,
+          save: :string,
+          verbose: :boolean,
+          search_paths: :string,
+          file_patterns: :string,
+          domains: :string,
+          exclude_domains: :string,
+          content_length: :string,
+          search_module: :string,
+          search_modules: :string
+        ],
+        aliases: [
+          s: :strategy,
+          m: :max_sources,
+          d: :depth,
+          f: :format,
+          v: :verbose,
+          c: :content_length
+        ]
+      )
 
     topic = Enum.join(args_list, " ")
-    
+
     unless String.trim(topic) != "" do
       Mix.raise("Topic is required. Usage: mix research TOPIC [options]")
     end
@@ -105,11 +106,11 @@ defmodule Mix.Tasks.Research do
 
     # Conduct research
     result = Mulberry.research(topic, research_opts)
-    
+
     case result do
       {:ok, research_result} ->
         handle_success(research_result, opts)
-        
+
       {:error, reason} ->
         Mix.shell().error("Research failed: #{inspect(reason)}")
         exit({:shutdown, 1})
@@ -126,10 +127,18 @@ defmodule Mix.Tasks.Research do
 
   defp validate_strategy(opts) do
     case opts[:strategy] do
-      nil -> opts
-      "web" -> Keyword.put(opts, :strategy, :web)
-      "local" -> Keyword.put(opts, :strategy, :local)
-      "hybrid" -> Keyword.put(opts, :strategy, :hybrid)
+      nil ->
+        opts
+
+      "web" ->
+        Keyword.put(opts, :strategy, :web)
+
+      "local" ->
+        Keyword.put(opts, :strategy, :local)
+
+      "hybrid" ->
+        Keyword.put(opts, :strategy, :hybrid)
+
       strategy ->
         Mix.raise("Invalid strategy: #{strategy}. Must be web, local, or hybrid")
     end
@@ -137,8 +146,12 @@ defmodule Mix.Tasks.Research do
 
   defp validate_depth(opts) do
     case opts[:depth] do
-      nil -> opts
-      depth when depth in 1..3 -> opts
+      nil ->
+        opts
+
+      depth when depth in 1..3 ->
+        opts
+
       depth ->
         Mix.raise("Invalid depth: #{depth}. Must be between 1 and 3")
     end
@@ -146,43 +159,55 @@ defmodule Mix.Tasks.Research do
 
   defp validate_format(opts) do
     case opts[:format] do
-      nil -> Keyword.put(opts, :format, "text")
-      format when format in ["text", "markdown", "json"] -> opts
+      nil ->
+        Keyword.put(opts, :format, "text")
+
+      format when format in ["text", "markdown", "json"] ->
+        opts
+
       format ->
         Mix.raise("Invalid format: #{format}. Must be text, markdown, or json")
     end
   end
-  
+
   defp validate_content_length(opts) do
     case opts[:content_length] do
-      nil -> opts
-      length when length in ["short", "medium", "long", "comprehensive"] -> opts
+      nil ->
+        opts
+
+      length when length in ["short", "medium", "long", "comprehensive"] ->
+        opts
+
       length ->
-        Mix.raise("Invalid content length: #{length}. Must be short, medium, long, or comprehensive")
+        Mix.raise(
+          "Invalid content length: #{length}. Must be short, medium, long, or comprehensive"
+        )
     end
   end
 
   defp build_research_options(opts, _topic) do
     research_opts = []
-    
+
     # Add basic options
     research_opts = maybe_add_option(research_opts, :strategy, opts[:strategy])
     research_opts = maybe_add_option(research_opts, :max_sources, opts[:max_sources])
     research_opts = maybe_add_option(research_opts, :depth, opts[:depth])
     research_opts = maybe_add_option(research_opts, :content_length, opts[:content_length])
-    
+
     # Add search module configuration
     research_opts = add_search_module_options(research_opts, opts)
-    
+
     # Add progress callback if verbose
-    research_opts = if opts[:verbose] do
-      Keyword.put(research_opts, :on_progress, &progress_callback/2)
-    else
-      research_opts
-    end
-    
+    research_opts =
+      if opts[:verbose] do
+        Keyword.put(research_opts, :on_progress, &progress_callback/2)
+      else
+        research_opts
+      end
+
     # Add search options
     search_options = build_search_options(opts)
+
     if map_size(search_options) > 0 do
       Keyword.put(research_opts, :search_options, search_options)
     else
@@ -198,29 +223,29 @@ defmodule Mix.Tasks.Research do
       # Multiple modules specified as JSON
       modules_json = opts[:search_modules] ->
         parse_and_add_search_modules(research_opts, modules_json)
-      
+
       # Single module specified
       module_name = opts[:search_module] ->
         module = get_module_atom(module_name)
         Keyword.put(research_opts, :search_module, module)
-      
+
       # No modules specified
       true ->
         research_opts
     end
   end
-  
+
   defp parse_and_add_search_modules(research_opts, modules_json) do
     case Jason.decode(modules_json) do
       {:ok, modules} ->
         modules = Enum.map(modules, &build_module_config/1)
         Keyword.put(research_opts, :search_modules, modules)
-        
+
       {:error, _} ->
         Mix.raise("Invalid JSON for search_modules: #{modules_json}")
     end
   end
-  
+
   defp build_module_config(module_config) do
     %{
       module: get_module_atom(module_config["module"]),
@@ -228,58 +253,65 @@ defmodule Mix.Tasks.Research do
       weight: module_config["weight"] || 1.0
     }
   end
-  
+
   defp get_module_atom("brave"), do: Mulberry.Search.Brave
   defp get_module_atom("reddit"), do: Mulberry.Search.Reddit
+
   defp get_module_atom(module) when is_binary(module) do
     Mix.raise("Unknown search module: #{module}. Available: brave, reddit")
   end
-  
+
   defp parse_module_options(options) when is_map(options) do
     # Convert string keys to atoms for known Reddit options
     Enum.reduce(options, %{}, fn {key, value}, acc ->
-      atom_key = case key do
-        "sort" -> :sort
-        "timeframe" -> :timeframe
-        "subreddit" -> :subreddit
-        "after" -> :after
-        "trim" -> :trim
-        "result_filter" -> :result_filter
-        _ -> String.to_atom(key)
-      end
+      atom_key =
+        case key do
+          "sort" -> :sort
+          "timeframe" -> :timeframe
+          "subreddit" -> :subreddit
+          "after" -> :after
+          "trim" -> :trim
+          "result_filter" -> :result_filter
+          _ -> String.to_atom(key)
+        end
+
       Map.put(acc, atom_key, value)
     end)
   end
 
   defp build_search_options(opts) do
     search_opts = %{}
-    
+
     # Local strategy options
-    search_opts = if paths = opts[:search_paths] do
-      Map.put(search_opts, :search_paths, String.split(paths, ","))
-    else
-      search_opts
-    end
-    
-    search_opts = if patterns = opts[:file_patterns] do
-      Map.put(search_opts, :file_patterns, String.split(patterns, ","))
-    else
-      search_opts
-    end
-    
+    search_opts =
+      if paths = opts[:search_paths] do
+        Map.put(search_opts, :search_paths, String.split(paths, ","))
+      else
+        search_opts
+      end
+
+    search_opts =
+      if patterns = opts[:file_patterns] do
+        Map.put(search_opts, :file_patterns, String.split(patterns, ","))
+      else
+        search_opts
+      end
+
     # Web strategy options
-    search_opts = if domains = opts[:domains] do
-      Map.put(search_opts, :include_domains, String.split(domains, ","))
-    else
-      search_opts
-    end
-    
-    search_opts = if exclude = opts[:exclude_domains] do
-      Map.put(search_opts, :exclude_domains, String.split(exclude, ","))
-    else
-      search_opts
-    end
-    
+    search_opts =
+      if domains = opts[:domains] do
+        Map.put(search_opts, :include_domains, String.split(domains, ","))
+      else
+        search_opts
+      end
+
+    search_opts =
+      if exclude = opts[:exclude_domains] do
+        Map.put(search_opts, :exclude_domains, String.split(exclude, ","))
+      else
+        search_opts
+      end
+
     search_opts
   end
 
@@ -293,23 +325,23 @@ defmodule Mix.Tasks.Research do
     case stage do
       :sources_gathered ->
         "[#{timestamp}] ✓ Gathered #{info.count} sources"
-        
+
       :documents_selected ->
         "[#{timestamp}] ✓ Selected #{info.selected} of #{info.total_found} documents"
-        
+
       :analyzing_source ->
         source_name = get_source_name(info)
         "[#{timestamp}] → Analyzing #{source_name} (#{info.current}/#{info.total})"
-        
+
       :analysis_complete ->
         "[#{timestamp}] ✓ Completed analysis of #{info.sources_analyzed} sources"
-        
+
       :chunks_created ->
         "[#{timestamp}] ✓ Created #{info.count} text chunks"
-        
+
       :fetching_document ->
         "[#{timestamp}] → Fetching #{info.url}"
-        
+
       _ ->
         "[#{timestamp}] → #{stage}: #{inspect(info)}"
     end
@@ -321,12 +353,13 @@ defmodule Mix.Tasks.Research do
 
   defp handle_success(result, opts) do
     # Format the output
-    output = case opts[:format] do
-      "json" -> format_json(result)
-      "markdown" -> format_markdown(result)
-      _ -> format_text(result)
-    end
-    
+    output =
+      case opts[:format] do
+        "json" -> format_json(result)
+        "markdown" -> format_markdown(result)
+        _ -> format_text(result)
+      end
+
     # Save or display
     if save_path = opts[:save] do
       save_results(output, save_path, opts[:format])
@@ -338,37 +371,38 @@ defmodule Mix.Tasks.Research do
   defp format_text(result) do
     """
     Research Topic: #{result.topic}
-    
+
     SUMMARY
     ═══════════════════════════════════════════════════════════════════════════════
     #{result.summary}
-    
+
     #{format_text_detailed_content(result.detailed_content)}
-    
+
     KEY FINDINGS
     ═══════════════════════════════════════════════════════════════════════════════
     #{format_text_findings(result.key_findings)}
-    
+
     SOURCES (#{length(result.sources || [])})
     ═══════════════════════════════════════════════════════════════════════════════
     #{format_text_sources(result.sources)}
-    
+
     THEMES
     ═══════════════════════════════════════════════════════════════════════════════
     #{format_text_list(result.themes)}
-    
+
     CONFIDENCE SCORE: #{format_confidence(result.confidence_score)}
-    
+
     RELATED TOPICS
     ═══════════════════════════════════════════════════════════════════════════════
     #{format_text_list(result.related_topics)}
-    
+
     #{format_text_stats(result.stats)}
     """
   end
 
   defp format_text_findings(nil), do: "No findings recorded"
   defp format_text_findings([]), do: "No findings recorded"
+
   defp format_text_findings(findings) do
     findings
     |> Enum.with_index(1)
@@ -379,6 +413,7 @@ defmodule Mix.Tasks.Research do
 
   defp format_text_sources(nil), do: "No sources"
   defp format_text_sources([]), do: "No sources"
+
   defp format_text_sources(sources) do
     sources
     |> Enum.with_index(1)
@@ -390,9 +425,10 @@ defmodule Mix.Tasks.Research do
 
   defp format_text_list(nil), do: "None"
   defp format_text_list([]), do: "None"
-  defp format_text_list(items), do: Enum.map_join(items, "\n", & "• #{&1}")
-  
+  defp format_text_list(items), do: Enum.map_join(items, "\n", &"• #{&1}")
+
   defp format_text_detailed_content(nil), do: ""
+
   defp format_text_detailed_content(content) do
     """
     DETAILED CONTENT
@@ -442,6 +478,7 @@ defmodule Mix.Tasks.Research do
 
   defp format_markdown_findings(nil), do: "*No findings recorded*"
   defp format_markdown_findings([]), do: "*No findings recorded*"
+
   defp format_markdown_findings(findings) do
     findings
     |> Enum.with_index(1)
@@ -452,12 +489,14 @@ defmodule Mix.Tasks.Research do
 
   defp format_markdown_sources(nil), do: "*No sources*"
   defp format_markdown_sources([]), do: "*No sources*"
+
   defp format_markdown_sources(sources) do
     sources
     |> Enum.with_index(1)
     |> Enum.map_join("\n", fn {source, index} ->
       title = get_source_title(source)
       url = get_source_url(source)
+
       if url do
         "#{index}. [#{title}](#{url})"
       else
@@ -468,9 +507,10 @@ defmodule Mix.Tasks.Research do
 
   defp format_markdown_list(nil), do: "*None*"
   defp format_markdown_list([]), do: "*None*"
-  defp format_markdown_list(items), do: Enum.map_join(items, "\n", & "- #{&1}")
-  
+  defp format_markdown_list(items), do: Enum.map_join(items, "\n", &"- #{&1}")
+
   defp format_markdown_detailed_content(nil), do: ""
+
   defp format_markdown_detailed_content(content) do
     """
     ## Detailed Content
@@ -496,78 +536,90 @@ defmodule Mix.Tasks.Research do
   defp format_confidence(nil), do: "N/A"
   defp format_confidence(score) when is_float(score), do: "#{round(score * 100)}%"
   defp format_confidence(score) when is_integer(score), do: "#{score}%"
-  
+
   defp format_text_stats(nil), do: ""
+
   defp format_text_stats(stats) when is_map(stats) do
-    sections = stats
-    |> Enum.map(fn {category, items} ->
-      format_stat_category_text(category, items)
-    end)
-    |> Enum.reject(&(&1 == ""))
-    |> Enum.join("\n\n")
-    
+    sections =
+      stats
+      |> Enum.map(fn {category, items} ->
+        format_stat_category_text(category, items)
+      end)
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.join("\n\n")
+
     if sections == "" do
       ""
     else
       """
-      
+
       STATISTICS & KEY DATA
       ═══════════════════════════════════════════════════════════════════════════════
       #{sections}
       """
     end
   end
-  
+
   defp format_markdown_stats(nil), do: ""
+
   defp format_markdown_stats(stats) when is_map(stats) do
-    sections = stats
-    |> Enum.map(fn {category, items} ->
-      format_stat_category_markdown(category, items)
-    end)
-    |> Enum.reject(&(&1 == ""))
-    |> Enum.join("\n\n")
-    
+    sections =
+      stats
+      |> Enum.map(fn {category, items} ->
+        format_stat_category_markdown(category, items)
+      end)
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.join("\n\n")
+
     if sections == "" do
       ""
     else
       """
-      
+
       ## Statistics & Key Data
-      
+
       #{sections}
       """
     end
   end
-  
+
   defp format_stat_category_text(category, items) when is_list(items) and length(items) > 0 do
     title = format_category_title(category)
-    stats = items
-    |> Enum.map_join("\n", fn item ->
-      "• #{item.value}: #{item.context}"
-    end)
-    
+
+    stats =
+      items
+      |> Enum.map_join("\n", fn item ->
+        "• #{item.value}: #{item.context}"
+      end)
+
     "#{title}:\n#{stats}"
   end
+
   defp format_stat_category_text(_, _), do: ""
-  
+
   defp format_stat_category_markdown(category, items) when is_list(items) and length(items) > 0 do
     title = format_category_title(category)
-    stats = items
-    |> Enum.map_join("\n", fn item ->
-      "- **#{item.value}**: #{item.context}"
-    end)
-    
+
+    stats =
+      items
+      |> Enum.map_join("\n", fn item ->
+        "- **#{item.value}**: #{item.context}"
+      end)
+
     "### #{title}\n\n#{stats}"
   end
+
   defp format_stat_category_markdown(_, _), do: ""
-  
+
   defp format_category_title(:numbers_and_percentages), do: "Key Numbers & Percentages"
   defp format_category_title(:dates_and_timelines), do: "Dates & Timelines"
   defp format_category_title(:comparisons), do: "Comparisons & Rankings"
   defp format_category_title(:quantities), do: "Quantities & Measurements"
   defp format_category_title(:financial), do: "Financial Data"
   defp format_category_title(:other), do: "Other Statistics"
-  defp format_category_title(category), do: category |> to_string() |> String.replace("_", " ") |> String.capitalize()
+
+  defp format_category_title(category),
+    do: category |> to_string() |> String.replace("_", " ") |> String.capitalize()
 
   defp save_results(content, path, format) do
     case File.write(path, content) do
@@ -576,7 +628,7 @@ defmodule Mix.Tasks.Research do
         Mix.shell().info("Results saved to: #{path}")
         Mix.shell().info("Format: #{format}")
         Mix.shell().info("Size: #{byte_size(content)} bytes")
-        
+
       {:error, reason} ->
         Mix.shell().error("Failed to save file: #{inspect(reason)}")
         exit({:shutdown, 1})

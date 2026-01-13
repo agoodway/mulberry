@@ -286,9 +286,7 @@ defmodule Mix.Tasks.BusinessListings do
         [String.trim(field), String.trim(operator), parse_value(value)]
 
       _ ->
-        Mix.raise(
-          "Invalid filter format: #{filter_str}. Expected format: 'field,operator,value'"
-        )
+        Mix.raise("Invalid filter format: #{filter_str}. Expected format: 'field,operator,value'")
     end
   end
 

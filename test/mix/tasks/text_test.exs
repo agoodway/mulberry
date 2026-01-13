@@ -10,11 +10,11 @@ defmodule Mix.Tasks.TextTest do
     # Create a temporary test file
     test_file = Path.join(System.tmp_dir!(), "test_text_#{:rand.uniform(10000)}.txt")
     File.write!(test_file, "This is test content from a file.")
-    
+
     on_exit(fn ->
       File.rm(test_file)
     end)
-    
+
     {:ok, test_file: test_file}
   end
 
@@ -27,9 +27,10 @@ defmodule Mix.Tasks.TextTest do
         {:ok, summary}
       end)
 
-      output = capture_io(fn ->
-        Text.run(["summarize", "--text", text])
-      end)
+      output =
+        capture_io(fn ->
+          Text.run(["summarize", "--text", text])
+        end)
 
       assert output =~ "Generating summary..."
       assert output =~ "Summary: #{summary}"
@@ -42,9 +43,10 @@ defmodule Mix.Tasks.TextTest do
         {:ok, summary}
       end)
 
-      output = capture_io(fn ->
-        Text.run(["summarize", "--file", test_file])
-      end)
+      output =
+        capture_io(fn ->
+          Text.run(["summarize", "--file", test_file])
+        end)
 
       assert output =~ "Summary: #{summary}"
     end
@@ -85,9 +87,10 @@ defmodule Mix.Tasks.TextTest do
         {:ok, title}
       end)
 
-      output = capture_io(fn ->
-        Text.run(["title", "--text", text])
-      end)
+      output =
+        capture_io(fn ->
+          Text.run(["title", "--text", text])
+        end)
 
       assert output =~ "Generating title..."
       assert output =~ "Title: #{title}"
@@ -103,7 +106,15 @@ defmodule Mix.Tasks.TextTest do
       end)
 
       capture_io(fn ->
-        Text.run(["title", "--text", text, "--max-words", "5", "--fallback-title", "Default Title"])
+        Text.run([
+          "title",
+          "--text",
+          text,
+          "--max-words",
+          "5",
+          "--fallback-title",
+          "Default Title"
+        ])
       end)
     end
   end
@@ -118,9 +129,10 @@ defmodule Mix.Tasks.TextTest do
         {:ok, "Tech"}
       end)
 
-      output = capture_io(fn ->
-        Text.run(["classify", "--text", text, "--categories", "Tech,Business,Health"])
-      end)
+      output =
+        capture_io(fn ->
+          Text.run(["classify", "--text", text, "--categories", "Tech,Business,Health"])
+        end)
 
       assert output =~ "Classifying into categories:"
       assert output =~ "Category: Tech"
@@ -136,7 +148,9 @@ defmodule Mix.Tasks.TextTest do
 
     test "parses examples JSON correctly" do
       text = "Test"
-      examples_json = ~s([{"text":"iPhone","category":"Tech"},{"text":"Earnings","category":"Business"}])
+
+      examples_json =
+        ~s([{"text":"iPhone","category":"Tech"},{"text":"Earnings","category":"Business"}])
 
       expect(MulberryText, :classify, fn ^text, opts ->
         assert opts[:examples] == [{"iPhone", "Tech"}, {"Earnings", "Business"}]
@@ -144,14 +158,30 @@ defmodule Mix.Tasks.TextTest do
       end)
 
       capture_io(fn ->
-        Text.run(["classify", "--text", text, "--categories", "Tech,Business", "--examples", examples_json])
+        Text.run([
+          "classify",
+          "--text",
+          text,
+          "--categories",
+          "Tech,Business",
+          "--examples",
+          examples_json
+        ])
       end)
     end
 
     test "handles invalid examples JSON" do
       assert_raise Mix.Error, ~r/Invalid JSON/, fn ->
         capture_io(fn ->
-          Text.run(["classify", "--text", "test", "--categories", "A,B", "--examples", "invalid json"])
+          Text.run([
+            "classify",
+            "--text",
+            "test",
+            "--categories",
+            "A,B",
+            "--examples",
+            "invalid json"
+          ])
         end)
       end
     end
@@ -166,9 +196,10 @@ defmodule Mix.Tasks.TextTest do
         chunks
       end)
 
-      output = capture_io(fn ->
-        Text.run(["split", "--text", text])
-      end)
+      output =
+        capture_io(fn ->
+          Text.run(["split", "--text", text])
+        end)
 
       assert output =~ "Splitting text into chunks..."
       assert output =~ "Text split into 3 chunks:"
@@ -185,12 +216,17 @@ defmodule Mix.Tasks.TextTest do
         chunks
       end)
 
-      output = capture_io(fn ->
-        Text.run(["split", "--text", text, "--output", "json"])
-      end)
+      output =
+        capture_io(fn ->
+          Text.run(["split", "--text", text, "--output", "json"])
+        end)
 
       # Extract JSON from output (skip the info messages)
-      json_lines = output |> String.split("\n") |> Enum.drop_while(fn line -> !String.starts_with?(line, "{") end)
+      json_lines =
+        output
+        |> String.split("\n")
+        |> Enum.drop_while(fn line -> !String.starts_with?(line, "{") end)
+
       json_output = Enum.join(json_lines, "\n")
       parsed = Jason.decode!(json_output)
       assert parsed["operation"] == "split"
@@ -208,9 +244,10 @@ defmodule Mix.Tasks.TextTest do
         {:ok, tokens}
       end)
 
-      output = capture_io(fn ->
-        Text.run(["tokens", "--text", text])
-      end)
+      output =
+        capture_io(fn ->
+          Text.run(["tokens", "--text", text])
+        end)
 
       assert output =~ "Tokenizing text..."
       assert output =~ "Token count: 2"
@@ -224,9 +261,10 @@ defmodule Mix.Tasks.TextTest do
         {:ok, tokens}
       end)
 
-      output = capture_io(fn ->
-        Text.run(["tokens", "--text", text, "--verbose"])
-      end)
+      output =
+        capture_io(fn ->
+          Text.run(["tokens", "--text", text, "--verbose"])
+        end)
 
       assert output =~ "Tokens:"
       assert output =~ ~s(["Test", "token"])
@@ -248,19 +286,20 @@ defmodule Mix.Tasks.TextTest do
   describe "output options" do
     test "saves output to file", %{test_file: _} do
       output_file = Path.join(System.tmp_dir!(), "output_#{:rand.uniform(10000)}.txt")
-      
+
       expect(MulberryText, :title, fn _, _ ->
         {:ok, "Test Title"}
       end)
 
-      output = capture_io(fn ->
-        Text.run(["title", "--text", "test", "--save", output_file])
-      end)
+      output =
+        capture_io(fn ->
+          Text.run(["title", "--text", "test", "--save", output_file])
+        end)
 
       assert output =~ "Output saved to: #{output_file}"
       assert File.exists?(output_file)
       assert File.read!(output_file) == "Test Title"
-      
+
       File.rm!(output_file)
     end
 
@@ -269,12 +308,17 @@ defmodule Mix.Tasks.TextTest do
         {:ok, "JSON Title"}
       end)
 
-      output = capture_io(fn ->
-        Text.run(["title", "--text", "test", "--output", "json"])
-      end)
+      output =
+        capture_io(fn ->
+          Text.run(["title", "--text", "test", "--output", "json"])
+        end)
 
       # Extract JSON from output (skip the info messages)
-      json_lines = output |> String.split("\n") |> Enum.drop_while(fn line -> !String.starts_with?(line, "{") end)
+      json_lines =
+        output
+        |> String.split("\n")
+        |> Enum.drop_while(fn line -> !String.starts_with?(line, "{") end)
+
       json_output = Enum.join(json_lines, "\n")
       parsed = Jason.decode!(json_output)
       assert parsed["operation"] == "title"
@@ -314,9 +358,10 @@ defmodule Mix.Tasks.TextTest do
         {:ok, "Title"}
       end)
 
-      output = capture_io(fn ->
-        Text.run(["title", "-t", "test"])
-      end)
+      output =
+        capture_io(fn ->
+          Text.run(["title", "-t", "test"])
+        end)
 
       assert output =~ "Title: Title"
     end

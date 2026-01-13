@@ -232,14 +232,15 @@ defmodule Mix.Tasks.Search do
     case Map.get(@search_modules, type) do
       nil ->
         available = Map.keys(@search_modules) |> Enum.sort() |> Enum.join(", ")
+
         Mix.raise("""
         Invalid search type: '#{type}'
-        
+
         Available search types:
           #{available}
-        
+
         Usage: mix search [TYPE] QUERY [options]
-        
+
         For more help: mix help search
         """)
 
@@ -280,7 +281,9 @@ defmodule Mix.Tasks.Search do
 
   defp check_api_key("facebook_ad_companies") do
     unless Mulberry.config(:scrapecreators_api_key) do
-      Mix.raise("SCRAPECREATORS_API_KEY environment variable is required for Facebook Ad Companies search")
+      Mix.raise(
+        "SCRAPECREATORS_API_KEY environment variable is required for Facebook Ad Companies search"
+      )
     end
   end
 
@@ -690,8 +693,12 @@ defmodule Mix.Tasks.Search do
     |> Enum.map_join("\n\n", fn {doc, index} ->
       verification = if doc.verification, do: " ✓ #{doc.verification}", else: ""
       likes = if doc.likes, do: "👍 #{format_number(doc.likes)} likes", else: ""
-      ig_info = if doc.ig_username, do: " | 📸 @#{doc.ig_username} (#{format_number(doc.ig_followers || 0)} followers)", else: ""
-      
+
+      ig_info =
+        if doc.ig_username,
+          do: " | 📸 @#{doc.ig_username} (#{format_number(doc.ig_followers || 0)} followers)",
+          else: ""
+
       """
       #{index}. #{doc.name}#{verification}
       ───────────────────────────────────────────────────────────────────────────────
@@ -707,7 +714,7 @@ defmodule Mix.Tasks.Search do
     |> Enum.with_index(1)
     |> Enum.map_join("\n\n", fn {doc, index} ->
       date_range = format_date_range(doc.first_shown, doc.last_shown)
-      
+
       """
       #{index}. #{doc.advertiser_name || "Unknown Advertiser"}
       ───────────────────────────────────────────────────────────────────────────────
@@ -956,6 +963,7 @@ defmodule Mix.Tasks.Search do
   defp format_platforms(platforms), do: Enum.join(platforms, ", ")
 
   defp format_number(nil), do: "0"
+
   defp format_number(num) when is_integer(num) do
     num
     |> Integer.to_string()
@@ -965,6 +973,7 @@ defmodule Mix.Tasks.Search do
     |> Enum.join(",")
     |> String.reverse()
   end
+
   defp format_number(num), do: to_string(num)
 
   defp format_date_range(nil, nil), do: "Date range unknown"

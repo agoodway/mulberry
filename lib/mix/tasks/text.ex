@@ -69,21 +69,34 @@ defmodule Mix.Tasks.Text do
   @impl Mix.Task
   def run(args) do
     {opts, [operation | _], _} = parse_args(args)
-    
+
     # Start the application
     Mix.Task.run("app.start")
-    
+
     # Get text input
     text = get_text_input(opts)
-    
+
     # Execute the requested operation
     case operation do
-      "summarize" -> handle_summarize(text, opts)
-      "title" -> handle_title(text, opts)
-      "classify" -> handle_classify(text, opts)
-      "split" -> handle_split(text, opts)
-      "tokens" -> handle_tokens(text, opts)
-      _ -> raise_error("Unknown operation: #{operation}. Use summarize, title, classify, split, or tokens.")
+      "summarize" ->
+        handle_summarize(text, opts)
+
+      "title" ->
+        handle_title(text, opts)
+
+      "classify" ->
+        handle_classify(text, opts)
+
+      "split" ->
+        handle_split(text, opts)
+
+      "tokens" ->
+        handle_tokens(text, opts)
+
+      _ ->
+        raise_error(
+          "Unknown operation: #{operation}. Use summarize, title, classify, split, or tokens."
+        )
     end
   rescue
     e ->
@@ -132,15 +145,17 @@ defmodule Mix.Tasks.Text do
 
   defp handle_summarize(text, opts) do
     info("Generating summary...")
-    
-    summary_opts = build_llm_opts(opts)
-    |> maybe_add_option(:strategy, opts[:strategy], &String.to_atom/1)
-    |> maybe_add_option(:chunk_size, opts[:chunk_size])
-    |> maybe_add_option(:verbose, opts[:verbose])
-    
+
+    summary_opts =
+      build_llm_opts(opts)
+      |> maybe_add_option(:strategy, opts[:strategy], &String.to_atom/1)
+      |> maybe_add_option(:chunk_size, opts[:chunk_size])
+      |> maybe_add_option(:verbose, opts[:verbose])
+
     case Mulberry.Text.summarize(text, summary_opts) do
       {:ok, summary} ->
         output_result("Summary", summary, opts)
+
       {:error, reason} ->
         raise_error("Failed to generate summary: #{inspect(reason)}")
     end
@@ -148,15 +163,17 @@ defmodule Mix.Tasks.Text do
 
   defp handle_title(text, opts) do
     info("Generating title...")
-    
-    title_opts = build_llm_opts(opts)
-    |> maybe_add_option(:max_words, opts[:max_words])
-    |> maybe_add_option(:fallback_title, opts[:fallback_title])
-    |> maybe_add_option(:verbose, opts[:verbose])
-    
+
+    title_opts =
+      build_llm_opts(opts)
+      |> maybe_add_option(:max_words, opts[:max_words])
+      |> maybe_add_option(:fallback_title, opts[:fallback_title])
+      |> maybe_add_option(:verbose, opts[:verbose])
+
     case Mulberry.Text.title(text, title_opts) do
       {:ok, title} ->
         output_result("Title", title, opts)
+
       {:error, reason} ->
         raise_error("Failed to generate title: #{inspect(reason)}")
     end
@@ -166,25 +183,28 @@ defmodule Mix.Tasks.Text do
     unless opts[:categories] do
       raise_error("You must provide --categories for classification")
     end
-    
+
     categories = String.split(opts[:categories], ",", trim: true)
     info("Classifying into categories: #{inspect(categories)}")
-    
-    classify_opts = build_llm_opts(opts)
-    |> Keyword.put(:categories, categories)
-    |> maybe_add_option(:fallback_category, opts[:fallback_category])
-    |> maybe_add_option(:verbose, opts[:verbose])
-    
+
+    classify_opts =
+      build_llm_opts(opts)
+      |> Keyword.put(:categories, categories)
+      |> maybe_add_option(:fallback_category, opts[:fallback_category])
+      |> maybe_add_option(:verbose, opts[:verbose])
+
     # Parse examples if provided
-    classify_opts = if opts[:examples] do
-      parse_examples(opts[:examples], classify_opts)
-    else
-      classify_opts
-    end
-    
+    classify_opts =
+      if opts[:examples] do
+        parse_examples(opts[:examples], classify_opts)
+      else
+        classify_opts
+      end
+
     case Mulberry.Text.classify(text, classify_opts) do
       {:ok, category} ->
         output_result("Category", category, opts)
+
       {:error, reason} ->
         raise_error("Failed to classify: #{inspect(reason)}")
     end
@@ -192,83 +212,96 @@ defmodule Mix.Tasks.Text do
 
   defp handle_split(text, opts) do
     info("Splitting text into chunks...")
-    
+
     chunks = Mulberry.Text.split(text)
-    
+
     if opts[:output] == "json" do
-      output_json(%{
-        operation: "split",
-        chunk_count: length(chunks),
-        chunks: Enum.with_index(chunks, fn chunk, idx ->
-          %{
-            index: idx,
-            text: chunk,
-            length: String.length(chunk)
-          }
-        end)
-      }, opts)
+      output_json(
+        %{
+          operation: "split",
+          chunk_count: length(chunks),
+          chunks:
+            Enum.with_index(chunks, fn chunk, idx ->
+              %{
+                index: idx,
+                text: chunk,
+                length: String.length(chunk)
+              }
+            end)
+        },
+        opts
+      )
     else
       info("Text split into #{length(chunks)} chunks:\n")
-      
+
       Enum.each(Enum.with_index(chunks), fn {chunk, idx} ->
         info("--- Chunk #{idx + 1} (#{String.length(chunk)} chars) ---")
         info(chunk)
         info("")
       end)
-      
+
       maybe_save_output(Enum.join(chunks, "\n\n---\n\n"), opts)
     end
   end
 
   defp handle_tokens(text, opts) do
     info("Tokenizing text...")
-    
+
     case Mulberry.Text.tokens(text) do
       {:ok, tokens} ->
         handle_tokens_success(tokens, opts)
-        
+
       {:error, reason} ->
         raise_error("Failed to tokenize: #{inspect(reason)}")
     end
   end
-  
+
   defp handle_tokens_success(tokens, opts) do
     token_count = length(tokens)
-    
+
     if opts[:output] == "json" do
-      output_json(%{
-        operation: "tokens",
-        token_count: token_count,
-        tokens: tokens
-      }, opts)
+      output_json(
+        %{
+          operation: "tokens",
+          token_count: token_count,
+          tokens: tokens
+        },
+        opts
+      )
     else
       info("Token count: #{token_count}")
-      
+
       if opts[:verbose] do
         info("\nTokens:")
         info(inspect(tokens, pretty: true, width: 80))
       end
-      
-      maybe_save_output("Token count: #{token_count}\n\nTokens:\n#{inspect(tokens, pretty: true)}", opts)
+
+      maybe_save_output(
+        "Token count: #{token_count}\n\nTokens:\n#{inspect(tokens, pretty: true)}",
+        opts
+      )
     end
   end
 
   defp parse_examples(examples_json, classify_opts) do
     case Jason.decode(examples_json) do
       {:ok, examples} ->
-        parsed_examples = Enum.map(examples, fn example ->
-          parse_single_example(example)
-        end)
+        parsed_examples =
+          Enum.map(examples, fn example ->
+            parse_single_example(example)
+          end)
+
         Keyword.put(classify_opts, :examples, parsed_examples)
+
       {:error, _} ->
         raise_error("Invalid JSON in --examples")
     end
   end
-  
+
   defp parse_single_example(%{"text" => text, "category" => category}) do
     {text, category}
   end
-  
+
   defp parse_single_example(_) do
     raise_error("Invalid example format. Expected {\"text\": \"...\", \"category\": \"...\"}")
   end
@@ -283,14 +316,19 @@ defmodule Mix.Tasks.Text do
   defp maybe_add_option(keyword_list, _key, nil), do: keyword_list
   defp maybe_add_option(keyword_list, key, value), do: Keyword.put(keyword_list, key, value)
   defp maybe_add_option(keyword_list, _key, nil, _transform), do: keyword_list
-  defp maybe_add_option(keyword_list, key, value, transform), do: Keyword.put(keyword_list, key, transform.(value))
+
+  defp maybe_add_option(keyword_list, key, value, transform),
+    do: Keyword.put(keyword_list, key, transform.(value))
 
   defp output_result(label, result, opts) do
     if opts[:output] == "json" do
-      output_json(%{
-        operation: String.downcase(label),
-        result: result
-      }, opts)
+      output_json(
+        %{
+          operation: String.downcase(label),
+          result: result
+        },
+        opts
+      )
     else
       info("#{label}: #{result}")
       maybe_save_output(result, opts)

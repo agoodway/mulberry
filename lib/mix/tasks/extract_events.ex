@@ -32,40 +32,41 @@ defmodule Mix.Tasks.ExtractEvents do
   @impl Mix.Task
   def run(args) do
     Mix.Task.run("app.start")
-    
-    {opts, [file_path], _} = OptionParser.parse(args,
-      switches: [
-        descriptions: :boolean,
-        output: :string,
-        validate: :boolean,
-        enhance: :boolean
-      ],
-      aliases: [
-        d: :descriptions,
-        o: :output,
-        v: :validate,
-        e: :enhance
-      ]
-    )
-    
+
+    {opts, [file_path], _} =
+      OptionParser.parse(args,
+        switches: [
+          descriptions: :boolean,
+          output: :string,
+          validate: :boolean,
+          enhance: :boolean
+        ],
+        aliases: [
+          d: :descriptions,
+          o: :output,
+          v: :validate,
+          e: :enhance
+        ]
+      )
+
     # Set defaults
     include_descriptions = Keyword.get(opts, :descriptions, true)
     output_path = Keyword.get(opts, :output, "events-extracted.json")
     validate = Keyword.get(opts, :validate, true)
     enhance = Keyword.get(opts, :enhance, true)
-    
+
     case extract_events_from_file(file_path, include_descriptions, validate, enhance) do
       {:ok, events} ->
         write_output(events, output_path)
         Mix.shell().info("✓ Successfully extracted #{length(events)} events to #{output_path}")
-        
+
         if validate do
           Mix.shell().info("✓ All events validated successfully")
         end
-        
+
         # Print summary
         print_summary(events)
-        
+
       {:error, reason} ->
         Mix.shell().error("✗ Extraction failed: #{inspect(reason)}")
         exit({:shutdown, 1})
@@ -74,9 +75,10 @@ defmodule Mix.Tasks.ExtractEvents do
 
   defp extract_events_from_file(file_path, include_descriptions, validate, enhance) do
     with {:ok, content} <- File.read(file_path),
-         {:ok, events} <- EventsExtractor.extract(content, 
-           include_descriptions: include_descriptions
-         ),
+         {:ok, events} <-
+           EventsExtractor.extract(content,
+             include_descriptions: include_descriptions
+           ),
          {:ok, validated_events} <- maybe_validate(events, validate),
          enhanced_events <- maybe_enhance(validated_events, enhance) do
       {:ok, enhanced_events}
@@ -88,11 +90,13 @@ defmodule Mix.Tasks.ExtractEvents do
   defp maybe_validate(events, true) do
     EventsExtractor.validate_events(events)
   end
+
   defp maybe_validate(events, false), do: {:ok, events}
 
   defp maybe_enhance(events, true) do
     EventsExtractor.enhance_events(events)
   end
+
   defp maybe_enhance(events, false), do: events
 
   defp write_output(events, output_path) do
@@ -103,43 +107,45 @@ defmodule Mix.Tasks.ExtractEvents do
   defp print_summary(events) do
     Mix.shell().info("\n📊 Extraction Summary:")
     Mix.shell().info("  Total events: #{length(events)}")
-    
+
     # Count by audience
-    audiences = 
+    audiences =
       events
-      |> Enum.flat_map(&(Map.get(&1, "audience", [])))
+      |> Enum.flat_map(&Map.get(&1, "audience", []))
       |> Enum.frequencies()
-    
+
     Mix.shell().info("\n  Events by audience:")
+
     Enum.each(audiences, fn {audience, count} ->
       Mix.shell().info("    • #{audience}: #{count}")
     end)
-    
+
     # Count by category
-    categories = 
+    categories =
       events
-      |> Enum.flat_map(&(Map.get(&1, "categories", [])))
+      |> Enum.flat_map(&Map.get(&1, "categories", []))
       |> Enum.frequencies()
-    
+
     Mix.shell().info("\n  Events by category:")
+
     Enum.each(categories, fn {category, count} ->
       Mix.shell().info("    • #{category}: #{count}")
     end)
-    
+
     # Count events with registration
-    registration_count = 
+    registration_count =
       events
       |> Enum.count(&(get_in(&1, ["registration", "required"]) == true))
-    
+
     if registration_count > 0 do
       Mix.shell().info("\n  Events requiring registration: #{registration_count}")
     end
-    
+
     # Count recurring events
-    recurring_count = 
+    recurring_count =
       events
       |> Enum.count(&(get_in(&1, ["date", "isRecurring"]) == true))
-    
+
     if recurring_count > 0 do
       Mix.shell().info("  Recurring events: #{recurring_count}")
     end

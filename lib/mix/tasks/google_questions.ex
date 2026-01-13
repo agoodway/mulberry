@@ -213,8 +213,12 @@ defmodule Mix.Tasks.GoogleQuestions do
 
   defp display_location(params) do
     cond do
-      params[:location_name] -> Mix.shell().info("Location: #{params[:location_name]}")
-      params[:location_code] -> Mix.shell().info("Location Code: #{params[:location_code]}")
+      params[:location_name] ->
+        Mix.shell().info("Location: #{params[:location_name]}")
+
+      params[:location_code] ->
+        Mix.shell().info("Location Code: #{params[:location_code]}")
+
       params[:location_coordinate] ->
         Mix.shell().info("Location Coordinate: #{params[:location_coordinate]}")
 
@@ -294,7 +298,10 @@ defmodule Mix.Tasks.GoogleQuestions do
     answer_count = length(question.answers)
 
     Mix.shell().info("  ❓ #{text}")
-    Mix.shell().info("     #{answer_count} answer(s) - by #{question.profile_name || "Anonymous"}")
+
+    Mix.shell().info(
+      "     #{answer_count} answer(s) - by #{question.profile_name || "Anonymous"}"
+    )
 
     if answer_count > 0 do
       display_first_answer(hd(question.answers))
@@ -323,6 +330,7 @@ defmodule Mix.Tasks.GoogleQuestions do
   end
 
   defp truncate_text(nil, _max_length), do: ""
+
   defp truncate_text(text, max_length) do
     if String.length(text) > max_length do
       "#{String.slice(text, 0..max_length)}..."

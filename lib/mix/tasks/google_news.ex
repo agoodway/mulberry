@@ -267,7 +267,7 @@ defmodule Mix.Tasks.GoogleNews do
   defp display_source_breakdown(result) do
     sources =
       result.news_items
-      |> Enum.map(& &1.source || &1.domain)
+      |> Enum.map(&(&1.source || &1.domain))
       |> Enum.reject(&is_nil/1)
       |> Enum.frequencies()
 

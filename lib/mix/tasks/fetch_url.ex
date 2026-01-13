@@ -54,30 +54,31 @@ defmodule Mix.Tasks.FetchUrl do
 
   @impl Mix.Task
   def run(args) do
-    {opts, args_list, _} = OptionParser.parse(args,
-      switches: [
-        headless: :boolean,
-        browser: :string,
-        stealth: :boolean,
-        timeout: :integer,
-        wait_for: :string,
-        save: :string,
-        show_text: :boolean,
-        markdown: :boolean,
-        title: :boolean
-      ],
-      aliases: [
-        h: :headless,
-        b: :browser,
-        s: :stealth,
-        t: :timeout,
-        w: :wait_for,
-        m: :markdown
-      ]
-    )
+    {opts, args_list, _} =
+      OptionParser.parse(args,
+        switches: [
+          headless: :boolean,
+          browser: :string,
+          stealth: :boolean,
+          timeout: :integer,
+          wait_for: :string,
+          save: :string,
+          show_text: :boolean,
+          markdown: :boolean,
+          title: :boolean
+        ],
+        aliases: [
+          h: :headless,
+          b: :browser,
+          s: :stealth,
+          t: :timeout,
+          w: :wait_for,
+          m: :markdown
+        ]
+      )
 
     url = List.first(args_list)
-    
+
     unless url do
       Mix.raise("URL is required. Usage: mix fetch_url URL [options]")
     end
@@ -94,22 +95,22 @@ defmodule Mix.Tasks.FetchUrl do
 
     # Fetch the URL
     result = Mulberry.Retriever.Playwright.get(url, retriever_opts)
-    
+
     case result do
       {:ok, %Mulberry.Retriever.Response{status: :ok, content: html}} ->
         handle_success(html, opts)
-      
+
       %Mulberry.Retriever.Response{status: :ok, content: html} ->
         handle_success(html, opts)
-        
+
       {:ok, %Mulberry.Retriever.Response{status: :failed}} ->
         Mix.shell().error("Failed to fetch URL")
         exit({:shutdown, 1})
-      
+
       %Mulberry.Retriever.Response{status: :failed} ->
         Mix.shell().error("Failed to fetch URL")
         exit({:shutdown, 1})
-      
+
       other ->
         Mix.shell().error("Unexpected response: #{inspect(other)}")
         exit({:shutdown, 1})
@@ -119,7 +120,7 @@ defmodule Mix.Tasks.FetchUrl do
   defp build_retriever_opts(opts) do
     retriever_opts = []
 
-    retriever_opts = 
+    retriever_opts =
       if Keyword.has_key?(opts, :headless) do
         Keyword.put(retriever_opts, :headless, opts[:headless])
       else
@@ -129,6 +130,7 @@ defmodule Mix.Tasks.FetchUrl do
     retriever_opts =
       if browser = opts[:browser] do
         browser_atom = String.to_existing_atom(browser)
+
         if browser_atom in [:chromium, :firefox, :webkit] do
           Keyword.put(retriever_opts, :browser, browser_atom)
         else
@@ -167,20 +169,20 @@ defmodule Mix.Tasks.FetchUrl do
     if opts[:title] do
       generate_and_show_title(html)
     end
-    
+
     cond do
       opts[:markdown] && opts[:save] ->
         save_as_markdown(html, opts[:save])
-      
+
       opts[:save] ->
         save_to_file(html, opts[:save])
-      
+
       opts[:markdown] ->
         show_markdown_content(html)
-        
+
       opts[:show_text] ->
         show_text_content(html)
-      
+
       true ->
         show_html_preview(html)
     end
@@ -191,7 +193,7 @@ defmodule Mix.Tasks.FetchUrl do
       :ok ->
         Mix.shell().info("HTML content saved to: #{path}")
         Mix.shell().info("File size: #{byte_size(html)} bytes")
-      
+
       {:error, reason} ->
         Mix.shell().error("Failed to save file: #{inspect(reason)}")
         exit({:shutdown, 1})
@@ -200,12 +202,12 @@ defmodule Mix.Tasks.FetchUrl do
 
   defp show_text_content(html) do
     # Parse HTML and convert to readable text
-    text = 
+    text =
       html
       |> Floki.parse_document!()
       |> Mulberry.HTML.to_readable_text()
       |> String.trim()
-    
+
     Mix.shell().info("Extracted text content:")
     Mix.shell().info("=" <> String.duplicate("=", 79))
     Mix.shell().info(text)
@@ -221,7 +223,7 @@ defmodule Mix.Tasks.FetchUrl do
         Mix.shell().info(markdown)
         Mix.shell().info("=" <> String.duplicate("=", 79))
         Mix.shell().info("Markdown length: #{String.length(markdown)} characters")
-        
+
       {:error, reason} ->
         Mix.shell().error("Failed to convert to Markdown: #{inspect(reason)}")
         exit({:shutdown, 1})
@@ -235,12 +237,12 @@ defmodule Mix.Tasks.FetchUrl do
           :ok ->
             Mix.shell().info("Markdown content saved to: #{path}")
             Mix.shell().info("File size: #{byte_size(markdown)} bytes")
-          
+
           {:error, reason} ->
             Mix.shell().error("Failed to save file: #{inspect(reason)}")
             exit({:shutdown, 1})
         end
-        
+
       {:error, reason} ->
         Mix.shell().error("Failed to convert to Markdown: #{inspect(reason)}")
         exit({:shutdown, 1})
@@ -250,7 +252,8 @@ defmodule Mix.Tasks.FetchUrl do
   defp show_html_preview(html) do
     # Show first 1000 characters of HTML
     preview_length = 1000
-    preview = 
+
+    preview =
       if byte_size(html) > preview_length do
         String.slice(html, 0, preview_length) <> "\n... (truncated)"
       else
@@ -262,7 +265,7 @@ defmodule Mix.Tasks.FetchUrl do
     Mix.shell().info(preview)
     Mix.shell().info("=" <> String.duplicate("=", 79))
     Mix.shell().info("Total HTML size: #{byte_size(html)} bytes")
-    
+
     # Extract and show title
     case Regex.run(~r/<title[^>]*>([^<]+)<\/title>/i, html) do
       [_, title] -> Mix.shell().info("Page title: #{String.trim(title)}")
@@ -274,14 +277,14 @@ defmodule Mix.Tasks.FetchUrl do
   defp generate_and_show_title(html) do
     Mix.shell().info("")
     Mix.shell().info("Generating AI title...")
-    
+
     # Extract text content from HTML
-    text = 
+    text =
       html
       |> Floki.parse_document!()
       |> Mulberry.HTML.to_readable_text()
       |> String.trim()
-    
+
     # Generate title using AI
     case Mulberry.Text.title(text, max_words: 14, verbose: false) do
       {:ok, generated_title} ->
@@ -289,7 +292,7 @@ defmodule Mix.Tasks.FetchUrl do
         Mix.shell().info("AI Generated Title: #{generated_title}")
         Mix.shell().info("=" <> String.duplicate("=", 79))
         Mix.shell().info("")
-        
+
       {:error, reason} ->
         Mix.shell().error("Failed to generate title: #{inspect(reason)}")
         Mix.shell().info("")

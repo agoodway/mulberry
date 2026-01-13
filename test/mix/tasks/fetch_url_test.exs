@@ -34,13 +34,16 @@ defmodule Mix.Tasks.FetchUrlTest do
         {:ok, "Guide to Elixir Process Concurrency"}
       end)
 
-      output = capture_io(fn ->
-        FetchUrl.run(["https://example.com", "--title"])
-      end)
+      output =
+        capture_io(fn ->
+          FetchUrl.run(["https://example.com", "--title"])
+        end)
 
       assert output =~ "Generating AI title..."
       assert output =~ "AI Generated Title: Guide to Elixir Process Concurrency"
-      assert output =~ "================================================================================\n"
+
+      assert output =~
+               "================================================================================\n"
     end
 
     test "shows error when title generation fails" do
@@ -65,12 +68,15 @@ defmodule Mix.Tasks.FetchUrlTest do
         {:error, "API error"}
       end)
 
-      output = capture_io(fn ->
-        stderr = capture_io(:stderr, fn ->
-          FetchUrl.run(["https://example.com", "--title"])
+      output =
+        capture_io(fn ->
+          stderr =
+            capture_io(:stderr, fn ->
+              FetchUrl.run(["https://example.com", "--title"])
+            end)
+
+          IO.write(stderr)
         end)
-        IO.write(stderr)
-      end)
 
       assert output =~ "Generating AI title..."
       assert output =~ "Failed to generate title:"
@@ -97,9 +103,10 @@ defmodule Mix.Tasks.FetchUrlTest do
         {:ok, "Elixir Programming Guide"}
       end)
 
-      output = capture_io(fn ->
-        FetchUrl.run(["https://example.com", "--title", "--show-text"])
-      end)
+      output =
+        capture_io(fn ->
+          FetchUrl.run(["https://example.com", "--title", "--show-text"])
+        end)
 
       assert output =~ "Generating AI title..."
       assert output =~ "AI Generated Title: Elixir Programming Guide"
@@ -121,15 +128,17 @@ defmodule Mix.Tasks.FetchUrlTest do
 
       expect(Mulberry.Retriever.Playwright, :get, fn url, _opts ->
         assert url == "https://example.com"
+
         %Response{
           status: :ok,
           content: html_content
         }
       end)
 
-      output = capture_io(fn ->
-        FetchUrl.run(["https://example.com"])
-      end)
+      output =
+        capture_io(fn ->
+          FetchUrl.run(["https://example.com"])
+        end)
 
       assert output =~ "Fetching URL: https://example.com"
       assert output =~ "HTML content preview:"
@@ -144,9 +153,10 @@ defmodule Mix.Tasks.FetchUrlTest do
         }
       end)
 
-      output = capture_io(:stderr, fn ->
-        assert catch_exit(FetchUrl.run(["https://example.com"])) == {:shutdown, 1}
-      end)
+      output =
+        capture_io(:stderr, fn ->
+          assert catch_exit(FetchUrl.run(["https://example.com"])) == {:shutdown, 1}
+        end)
 
       assert output =~ "Failed to fetch URL"
     end
