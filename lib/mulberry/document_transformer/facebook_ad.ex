@@ -15,11 +15,11 @@ defmodule Mulberry.DocumentTransformer.FacebookAd do
 
   def transform(ad, :summary, opts) do
     content = get_content_for_summary(ad)
-    
+
     case Text.summarize(content, opts) do
       {:ok, summary} ->
         {:ok, %{ad | summary: summary}}
-        
+
       {:error, error} ->
         {:error, error, ad}
     end
@@ -47,7 +47,7 @@ defmodule Mulberry.DocumentTransformer.FacebookAd do
   end
 
   # Private helper functions
-  
+
   defp get_content_for_summary(ad) do
     parts = [
       if(ad.page_name, do: "Advertiser: #{ad.page_name}", else: nil),
@@ -56,26 +56,27 @@ defmodule Mulberry.DocumentTransformer.FacebookAd do
       if(ad.link_description, do: "Description: #{ad.link_description}", else: nil),
       if(ad.cta_text, do: "Call to Action: #{ad.cta_text}", else: nil)
     ]
-    
+
     parts
     |> Enum.filter(& &1)
     |> Enum.join("\n\n")
   end
 
-  defp generate_ad_title(%{page_name: page_name, body_text: body_text}) 
+  defp generate_ad_title(%{page_name: page_name, body_text: body_text})
        when is_binary(page_name) and is_binary(body_text) do
     # Take first sentence or first 50 chars of body text
-    preview = body_text
-              |> String.split(~r/[.!?]/, parts: 2)
-              |> List.first()
-              |> String.slice(0, @title_truncation_limit)
-    
+    preview =
+      body_text
+      |> String.split(~r/[.!?]/, parts: 2)
+      |> List.first()
+      |> String.slice(0, @title_truncation_limit)
+
     "#{page_name}: #{preview}"
   end
-  
+
   defp generate_ad_title(%{page_name: page_name}) when is_binary(page_name) do
     "Ad by #{page_name}"
   end
-  
+
   defp generate_ad_title(_), do: "Facebook Ad"
 end

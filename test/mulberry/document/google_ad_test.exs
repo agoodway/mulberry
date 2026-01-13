@@ -11,7 +11,8 @@ defmodule Mulberry.Document.GoogleAdTest do
         advertiser_id: "AR01614014350098432001",
         creative_id: "CR10449491775734153217",
         format: "text",
-        ad_url: "https://adstransparency.google.com/advertiser/AR01614014350098432001/creative/CR10449491775734153217",
+        ad_url:
+          "https://adstransparency.google.com/advertiser/AR01614014350098432001/creative/CR10449491775734153217",
         advertiser_name: "Lululemon Athletica Canada Inc.",
         domain: "lululemon.com",
         first_shown: "2023-12-29T21:59:16.000Z",
@@ -31,16 +32,18 @@ defmodule Mulberry.Document.GoogleAdTest do
 
   describe "Mulberry.Document implementation" do
     setup do
-      ad = GoogleAd.new(%{
-        advertiser_id: "AR01614014350098432001",
-        creative_id: "CR10449491775734153217",
-        format: "text",
-        ad_url: "https://adstransparency.google.com/advertiser/AR01614014350098432001/creative/CR10449491775734153217",
-        advertiser_name: "Lululemon Athletica Canada Inc.",
-        domain: "lululemon.com",
-        first_shown: "2023-12-29T21:59:16.000Z",
-        last_shown: "2025-03-28T01:46:12.000Z"
-      })
+      ad =
+        GoogleAd.new(%{
+          advertiser_id: "AR01614014350098432001",
+          creative_id: "CR10449491775734153217",
+          format: "text",
+          ad_url:
+            "https://adstransparency.google.com/advertiser/AR01614014350098432001/creative/CR10449491775734153217",
+          advertiser_name: "Lululemon Athletica Canada Inc.",
+          domain: "lululemon.com",
+          first_shown: "2023-12-29T21:59:16.000Z",
+          last_shown: "2025-03-28T01:46:12.000Z"
+        })
 
       {:ok, ad: ad}
     end
@@ -96,15 +99,16 @@ defmodule Mulberry.Document.GoogleAdTest do
     end
 
     test "generate_keywords/2", %{ad: ad} do
-      ad_with_variations = %{ad | 
-        variations: [
-          %{"headline" => "Best Yoga Pants - Premium Quality"},
-          %{"headline" => "Comfortable Athletic Wear"}
-        ],
-        creative_regions: [
-          %{"regionName" => "United States"},
-          %{"regionName" => "Canada"}
-        ]
+      ad_with_variations = %{
+        ad
+        | variations: [
+            %{"headline" => "Best Yoga Pants - Premium Quality"},
+            %{"headline" => "Comfortable Athletic Wear"}
+          ],
+          creative_regions: [
+            %{"regionName" => "United States"},
+            %{"regionName" => "Canada"}
+          ]
       }
 
       assert {:ok, ad_with_keywords} = Mulberry.Document.generate_keywords(ad_with_variations)
@@ -131,16 +135,17 @@ defmodule Mulberry.Document.GoogleAdTest do
     end
 
     test "to_text/2 with detailed data", %{ad: ad} do
-      detailed_ad = %{ad |
-        overall_impressions: %{"min" => 1000, "max" => 5000},
-        creative_regions: [%{"regionName" => "United States"}],
-        variations: [
-          %{
-            "headline" => "Best Yoga Pants",
-            "description" => "Shop our collection",
-            "destinationUrl" => "lululemon.com/yoga"
-          }
-        ]
+      detailed_ad = %{
+        ad
+        | overall_impressions: %{"min" => 1000, "max" => 5000},
+          creative_regions: [%{"regionName" => "United States"}],
+          variations: [
+            %{
+              "headline" => "Best Yoga Pants",
+              "description" => "Shop our collection",
+              "destinationUrl" => "lululemon.com/yoga"
+            }
+          ]
       }
 
       assert {:ok, text} = Mulberry.Document.to_text(detailed_ad)
@@ -163,7 +168,7 @@ defmodule Mulberry.Document.GoogleAdTest do
 
     test "to_chunks/2", %{ad: ad} do
       chunk = %TextChunker.Chunk{text: "chunk content"}
-      
+
       expect(Mulberry.Text, :split, fn _text ->
         [chunk]
       end)

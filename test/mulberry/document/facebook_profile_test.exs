@@ -71,7 +71,8 @@ defmodule Mulberry.Document.FacebookProfileTest do
     end
 
     test "generate_summary/2 generates a summary of the profile", %{profile: profile} do
-      expected_summary = "A popular pizza restaurant in Regina offering Mediterranean specialties."
+      expected_summary =
+        "A popular pizza restaurant in Regina offering Mediterranean specialties."
 
       expect(Mulberry.Text, :summarize, fn _text, _opts ->
         {:ok, expected_summary}

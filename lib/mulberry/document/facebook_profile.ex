@@ -109,9 +109,10 @@ defmodule Mulberry.Document.FacebookProfile do
   defimpl Mulberry.Document do
     alias Mulberry.DocumentTransformer
     alias Mulberry.Text
-    
+
     # Transform function - new unified interface
-    @spec transform(FacebookProfile.t(), atom(), keyword()) :: {:ok, FacebookProfile.t()} | {:error, any(), FacebookProfile.t()}
+    @spec transform(FacebookProfile.t(), atom(), keyword()) ::
+            {:ok, FacebookProfile.t()} | {:error, any(), FacebookProfile.t()}
     def transform(%FacebookProfile{} = profile, transformation, opts \\ []) do
       transformer = Keyword.get(opts, :transformer, DocumentTransformer.Default)
       transformer.transform(profile, transformation, opts)
@@ -187,7 +188,89 @@ defmodule Mulberry.Document.FacebookProfile do
       end
     end
 
+    @spec to_markdown(FacebookProfile.t(), keyword()) :: {:ok, String.t()} | {:error, any()}
+    def to_markdown(%FacebookProfile{} = profile, _opts) do
+      # Facebook profiles are structured data, return as markdown-formatted text
+      text = build_markdown_representation(profile)
+      {:ok, text}
+    end
+
     # Private helper functions
+
+    defp build_markdown_representation(%FacebookProfile{} = profile) do
+      parts = [
+        if(profile.name, do: "# #{profile.name}", else: "# Facebook Profile"),
+        "",
+        if(profile.category, do: "**Category:** #{profile.category}", else: nil),
+        if(profile.page_intro && profile.page_intro != "",
+          do: "\n#{profile.page_intro}\n",
+          else: nil
+        ),
+        "",
+        "---",
+        "",
+        format_md_contact_info(profile),
+        format_md_business_details(profile),
+        format_md_engagement_metrics(profile),
+        "",
+        if(profile.url, do: "**URL:** #{profile.url}", else: nil)
+      ]
+
+      parts
+      |> Enum.filter(& &1)
+      |> Enum.join("\n")
+    end
+
+    defp format_md_contact_info(profile) do
+      parts = []
+      parts = if profile.email, do: parts ++ ["- **Email:** #{profile.email}"], else: parts
+      parts = if profile.phone, do: parts ++ ["- **Phone:** #{profile.phone}"], else: parts
+      parts = if profile.website, do: parts ++ ["- **Website:** #{profile.website}"], else: parts
+      parts = if profile.address, do: parts ++ ["- **Address:** #{profile.address}"], else: parts
+
+      case parts do
+        [] -> nil
+        _ -> "## Contact\n" <> Enum.join(parts, "\n")
+      end
+    end
+
+    defp format_md_business_details(profile) do
+      parts = []
+
+      parts =
+        if profile.services, do: parts ++ ["- **Services:** #{profile.services}"], else: parts
+
+      parts =
+        if profile.price_range,
+          do: parts ++ ["- **Price Range:** #{profile.price_range}"],
+          else: parts
+
+      case parts do
+        [] -> nil
+        _ -> "## Business\n" <> Enum.join(parts, "\n")
+      end
+    end
+
+    defp format_md_engagement_metrics(profile) do
+      parts = []
+
+      parts =
+        if profile.like_count,
+          do: parts ++ ["- **Likes:** #{format_number(profile.like_count)}"],
+          else: parts
+
+      parts =
+        if profile.follower_count,
+          do: parts ++ ["- **Followers:** #{format_number(profile.follower_count)}"],
+          else: parts
+
+      parts = if profile.rating, do: parts ++ ["- **Rating:** #{profile.rating}"], else: parts
+
+      case parts do
+        [] -> nil
+        _ -> "## Engagement\n" <> Enum.join(parts, "\n")
+      end
+    end
 
     defp get_content_for_summary(%FacebookProfile{} = profile) do
       parts = [

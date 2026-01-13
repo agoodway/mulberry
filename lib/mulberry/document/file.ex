@@ -14,7 +14,14 @@ defmodule Mulberry.Document.File do
           meta: list()
         }
 
-  defstruct path: nil, contents: nil, summary: nil, keywords: [], title: nil, extracted_data: nil, mime: nil, meta: []
+  defstruct path: nil,
+            contents: nil,
+            summary: nil,
+            keywords: [],
+            title: nil,
+            extracted_data: nil,
+            mime: nil,
+            meta: []
 
   @doc """
   Creates a new File document struct with the given attributes.
@@ -129,6 +136,35 @@ defmodule Mulberry.Document.File do
 
     def to_chunks(%Mulberry.Document.File{} = file, _opts) do
       {:error, :not_loaded, file}
+    end
+
+    def to_markdown(file, opts \\ [])
+
+    def to_markdown(%Mulberry.Document.File{contents: contents}, opts)
+        when is_binary(contents) do
+      # For text files, the contents are already in a markdown-compatible format
+      # Apply cleaning options if specified
+      cleaned_content =
+        if Keyword.get(opts, :clean_whitespace, false) do
+          clean_whitespace(contents)
+        else
+          contents
+        end
+
+      {:ok, cleaned_content}
+    end
+
+    def to_markdown(%Mulberry.Document.File{} = file, _opts) do
+      {:error, :not_loaded, file}
+    end
+
+    defp clean_whitespace(text) do
+      text
+      |> String.replace(~r/^[ \t]+$/m, "")
+      |> String.replace(~r/\n{3,}/, "\n\n")
+      |> String.split("\n")
+      |> Enum.map_join("\n", &String.trim_trailing/1)
+      |> String.trim()
     end
 
     defp ocr_image(file) do

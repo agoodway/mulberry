@@ -13,11 +13,11 @@ defmodule Mulberry.DocumentTransformer.RedditPost do
 
   def transform(post, :summary, opts) do
     content = get_content_for_summary(post)
-    
+
     case Text.summarize(content, opts) do
       {:ok, summary} ->
         {:ok, %{post | summary: summary}}
-        
+
       {:error, error} ->
         {:error, error, post}
     end
@@ -39,11 +39,12 @@ defmodule Mulberry.DocumentTransformer.RedditPost do
   end
 
   # Private helper functions
-  
-  defp get_content_for_summary(%{selftext: selftext, title: title}) when is_binary(selftext) and selftext != "" do
+
+  defp get_content_for_summary(%{selftext: selftext, title: title})
+       when is_binary(selftext) and selftext != "" do
     "Title: #{title}\n\n#{selftext}"
   end
-  
+
   defp get_content_for_summary(%{title: title}) do
     title
   end

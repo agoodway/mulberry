@@ -130,5 +130,97 @@ defmodule Mulberry.Document.WebPage do
     def to_chunks(%WebPage{} = _web_page, _opts) do
       {:error, :not_loaded}
     end
+
+    def to_markdown(web_page, opts \\ [])
+
+    def to_markdown(%WebPage{markdown: markdown}, opts) when is_binary(markdown) do
+      cleaned_markdown =
+        if Keyword.get(opts, :clean_whitespace, false) do
+          clean_whitespace(markdown)
+        else
+          markdown
+        end
+
+      final_markdown =
+        if Keyword.get(opts, :remove_empty_sections, false) do
+          remove_empty_sections(cleaned_markdown)
+        else
+          cleaned_markdown
+        end
+
+      {:ok, final_markdown}
+    end
+
+    def to_markdown(%WebPage{}, _opts) do
+      {:error, :not_loaded}
+    end
+
+    # Private helpers for markdown cleaning
+
+    defp clean_whitespace(markdown) do
+      markdown
+      # Remove lines with only whitespace
+      |> String.replace(~r/^[ \t]+$/m, "")
+      # Collapse more than 2 consecutive newlines to 2
+      |> String.replace(~r/\n{3,}/, "\n\n")
+      # Trim trailing whitespace from each line
+      |> String.split("\n")
+      |> Enum.map_join("\n", &String.trim_trailing/1)
+      # Trim leading and trailing whitespace from the whole document
+      |> String.trim()
+    end
+
+    defp remove_empty_sections(markdown) do
+      # Split into sections by headers
+      # A section is considered empty if it has < 50 chars of non-whitespace content
+      lines = String.split(markdown, "\n")
+
+      {processed_lines, last_section, last_content} =
+        Enum.reduce(lines, {[], nil, []}, &process_section_line/2)
+
+      # Process the last section
+      final_lines = finalize_sections(processed_lines, last_section, last_content)
+
+      Enum.join(final_lines, "\n")
+    end
+
+    defp process_section_line(line, {acc, current_header, section_content}) do
+      if String.match?(line, ~r/^\#{1,6}\s+/) do
+        new_acc = maybe_add_previous_section(acc, current_header, section_content)
+        {new_acc, line, []}
+      else
+        {acc, current_header, section_content ++ [line]}
+      end
+    end
+
+    defp maybe_add_previous_section(acc, nil, section_content), do: acc ++ section_content
+
+    defp maybe_add_previous_section(acc, header, section_content) do
+      if section_has_content?(section_content) do
+        acc ++ [header | section_content]
+      else
+        acc
+      end
+    end
+
+    defp finalize_sections(processed_lines, nil, last_content) do
+      processed_lines ++ last_content
+    end
+
+    defp finalize_sections(processed_lines, last_section, last_content) do
+      if section_has_content?(last_content) do
+        processed_lines ++ [last_section | last_content]
+      else
+        processed_lines
+      end
+    end
+
+    defp section_has_content?(content) do
+      content
+      |> Enum.join("")
+      |> String.replace(~r/\s+/, "")
+      |> String.length()
+      |> Kernel.>=(50)
+    end
   end
 end

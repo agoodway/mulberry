@@ -28,6 +28,7 @@ defmodule Mulberry.DocumentTransformer.Default do
         # Keywords generation not yet implemented in Text module
         # For now, return empty keywords
         {:ok, Map.put(document, :keywords, [])}
+
       {:error, :no_text_field} ->
         {:error, :not_loaded, document}
     end
@@ -51,7 +52,7 @@ defmodule Mulberry.DocumentTransformer.Default do
   def transform(document, :extract, opts) do
     # Extract structured data using provided schema
     schema = Keyword.get(opts, :schema)
-    
+
     if is_nil(schema) do
       {:error, {:missing_required_option, :schema}, document}
     else
@@ -74,10 +75,13 @@ defmodule Mulberry.DocumentTransformer.Default do
     cond do
       Map.has_key?(document, :markdown) && is_binary(document.markdown) ->
         {:ok, document.markdown}
+
       Map.has_key?(document, :content) && is_binary(document.content) ->
         {:ok, document.content}
+
       Map.has_key?(document, :contents) && is_binary(document.contents) ->
         {:ok, document.contents}
+
       true ->
         {:error, :no_text_field}
     end

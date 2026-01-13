@@ -13,31 +13,31 @@ defmodule Mulberry.Document.FacebookAdCompany do
           page_id: String.t() | nil,
           name: String.t() | nil,
           category: String.t() | nil,
-          
+
           # Visual
           image_uri: String.t() | nil,
-          
+
           # Engagement metrics
           likes: integer() | nil,
           verification: String.t() | nil,
-          
+
           # Location
           country: String.t() | nil,
-          
+
           # Entity information
           entity_type: String.t() | nil,
           page_alias: String.t() | nil,
           page_is_deleted: boolean(),
-          
+
           # Instagram integration
           ig_username: String.t() | nil,
           ig_followers: integer() | nil,
           ig_verification: boolean(),
-          
+
           # Generated fields
           summary: String.t() | nil,
           keywords: [String.t()],
-          
+
           # Extra metadata
           meta: keyword()
         }
@@ -47,28 +47,28 @@ defmodule Mulberry.Document.FacebookAdCompany do
     :page_id,
     :name,
     :category,
-    
+
     # Visual
     :image_uri,
-    
+
     # Engagement metrics
     :likes,
     :verification,
-    
+
     # Location
     :country,
-    
+
     # Entity information
     :entity_type,
     :page_alias,
-    
+
     # Instagram integration
     :ig_username,
     :ig_followers,
-    
+
     # Generated fields
     :summary,
-    
+
     # Fields with defaults (must come last)
     page_is_deleted: false,
     ig_verification: false,
@@ -87,9 +87,10 @@ defmodule Mulberry.Document.FacebookAdCompany do
   defimpl Mulberry.Document do
     alias Mulberry.DocumentTransformer
     alias Mulberry.Text
-    
+
     # Transform function - new unified interface
-    @spec transform(FacebookAdCompany.t(), atom(), keyword()) :: {:ok, FacebookAdCompany.t()} | {:error, any(), FacebookAdCompany.t()}
+    @spec transform(FacebookAdCompany.t(), atom(), keyword()) ::
+            {:ok, FacebookAdCompany.t()} | {:error, any(), FacebookAdCompany.t()}
     def transform(%FacebookAdCompany{} = company, transformation, opts \\ []) do
       transformer = Keyword.get(opts, :transformer, DocumentTransformer.Default)
       transformer.transform(company, transformation, opts)
@@ -165,7 +166,59 @@ defmodule Mulberry.Document.FacebookAdCompany do
       end
     end
 
+    @spec to_markdown(FacebookAdCompany.t(), keyword()) :: {:ok, String.t()} | {:error, any()}
+    def to_markdown(%FacebookAdCompany{} = company, _opts) do
+      # Facebook Ad Companies are structured data, return as markdown-formatted text
+      text = build_markdown_representation(company)
+      {:ok, text}
+    end
+
     # Private helper functions
+
+    defp build_markdown_representation(%FacebookAdCompany{} = company) do
+      parts = [
+        if(company.name, do: "# #{company.name}", else: "# Facebook Ad Company"),
+        "",
+        if(company.category, do: "**Category:** #{company.category}", else: nil),
+        if(company.entity_type, do: "**Entity Type:** #{company.entity_type}", else: nil),
+        if(company.verification, do: "**Verification:** #{company.verification}", else: nil),
+        "",
+        format_md_social_presence(company),
+        format_md_instagram_presence(company),
+        "",
+        if(company.country, do: "**Location:** #{company.country}", else: nil),
+        if(company.page_is_deleted, do: "*Page Status: Deleted*", else: nil)
+      ]
+
+      parts
+      |> Enum.filter(& &1)
+      |> Enum.join("\n")
+    end
+
+    defp format_md_social_presence(%{likes: likes}) when is_integer(likes) and likes > 0 do
+      "## Facebook Presence\n- **Likes:** #{format_number(likes)}"
+    end
+
+    defp format_md_social_presence(_), do: nil
+
+    defp format_md_instagram_presence(company) do
+      if company.ig_username do
+        parts = ["## Instagram Presence"]
+        parts = parts ++ ["- **Username:** @#{company.ig_username}"]
+
+        parts =
+          if company.ig_followers,
+            do: parts ++ ["- **Followers:** #{format_number(company.ig_followers)}"],
+            else: parts
+
+        parts =
+          if company.ig_verification,
+            do: parts ++ ["- **Verified:** Yes"],
+            else: parts
+
+        Enum.join(parts, "\n")
+      end
+    end
 
     defp get_content_for_summary(%FacebookAdCompany{} = company) do
       parts = [
@@ -189,7 +242,7 @@ defmodule Mulberry.Document.FacebookAdCompany do
       keywords = if company.country, do: [company.country | keywords], else: keywords
 
       # Add verification status as keyword if verified
-      keywords = 
+      keywords =
         if company.verification in ["BLUE_VERIFIED", "VERIFIED"],
           do: ["Verified" | keywords],
           else: keywords
@@ -225,7 +278,9 @@ defmodule Mulberry.Document.FacebookAdCompany do
     defp format_category_and_type(company) do
       parts = []
       parts = if company.category, do: parts ++ ["Category: #{company.category}"], else: parts
-      parts = if company.entity_type, do: parts ++ ["Entity Type: #{company.entity_type}"], else: parts
+
+      parts =
+        if company.entity_type, do: parts ++ ["Entity Type: #{company.entity_type}"], else: parts
 
       case parts do
         [] -> nil
@@ -248,13 +303,13 @@ defmodule Mulberry.Document.FacebookAdCompany do
     defp format_instagram_presence(company) do
       if company.ig_username do
         parts = ["Username: @#{company.ig_username}"]
-        
-        parts = 
+
+        parts =
           if company.ig_followers,
             do: parts ++ ["Followers: #{format_number(company.ig_followers)}"],
             else: parts
-            
-        parts = 
+
+        parts =
           if company.ig_verification,
             do: parts ++ ["Verified: Yes"],
             else: parts

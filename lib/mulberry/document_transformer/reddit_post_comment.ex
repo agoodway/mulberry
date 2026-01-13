@@ -17,22 +17,24 @@ defmodule Mulberry.DocumentTransformer.RedditPostComment do
 
   def transform(doc, :summary, opts) do
     # Summarize top-level comments
-    top_comments_text = doc.comments
-    |> Enum.take(5)
-    |> Enum.map_join("\n\n", fn comment -> 
-      truncated_body = 
-        if String.length(comment.body) > 200 do
-          String.slice(comment.body, 0, 200) <> "..."
-        else
-          comment.body
-        end
-      "#{comment.author}: #{truncated_body}"
-    end)
-    
+    top_comments_text =
+      doc.comments
+      |> Enum.take(5)
+      |> Enum.map_join("\n\n", fn comment ->
+        truncated_body =
+          if String.length(comment.body) > 200 do
+            String.slice(comment.body, 0, 200) <> "..."
+          else
+            comment.body
+          end
+
+        "#{comment.author}: #{truncated_body}"
+      end)
+
     case Text.summarize(top_comments_text, opts) do
       {:ok, summary} ->
         {:ok, %{doc | meta: Keyword.put(doc.meta, :summary, summary)}}
-        
+
       {:error, error} ->
         {:error, error, doc}
     end

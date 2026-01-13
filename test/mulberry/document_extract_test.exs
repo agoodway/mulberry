@@ -17,20 +17,27 @@ defmodule Mulberry.DocumentExtractTest do
 
       # Mock Text.extract
       expected_data = [
-        %{"person_name" => "John Smith", "age" => 32, "occupation" => "software engineer", "company" => "TechCorp"}
+        %{
+          "person_name" => "John Smith",
+          "age" => 32,
+          "occupation" => "software engineer",
+          "company" => "TechCorp"
+        }
       ]
-      
+
       stub(Text, :extract, fn text, opts ->
         assert text == web_page.markdown
+
         assert opts[:schema] == %{
-          type: "object",
-          properties: %{
-            person_name: %{type: "string"},
-            age: %{type: "number"},
-            occupation: %{type: "string"},
-            company: %{type: "string"}
-          }
-        }
+                 type: "object",
+                 properties: %{
+                   person_name: %{type: "string"},
+                   age: %{type: "number"},
+                   occupation: %{type: "string"},
+                   company: %{type: "string"}
+                 }
+               }
+
         {:ok, expected_data}
       end)
 
@@ -58,9 +65,14 @@ defmodule Mulberry.DocumentExtractTest do
 
       # Mock Text.extract
       expected_data = [
-        %{"person_name" => "Jane Doe", "age" => 28, "occupation" => "data scientist", "company" => "DataCo"}
+        %{
+          "person_name" => "Jane Doe",
+          "age" => 28,
+          "occupation" => "data scientist",
+          "company" => "DataCo"
+        }
       ]
-      
+
       stub(Text, :extract, fn text, _opts ->
         assert text == file.contents
         {:ok, expected_data}
@@ -86,8 +98,8 @@ defmodule Mulberry.DocumentExtractTest do
         markdown: "Some content"
       }
 
-      assert {:error, {:missing_required_option, :schema}, ^web_page} = 
-        Document.transform(web_page, :extract)
+      assert {:error, {:missing_required_option, :schema}, ^web_page} =
+               Document.transform(web_page, :extract)
     end
 
     test "returns error when document is not loaded" do
@@ -98,8 +110,8 @@ defmodule Mulberry.DocumentExtractTest do
 
       schema = %{type: "object", properties: %{}}
 
-      assert {:error, :not_loaded, ^web_page} = 
-        Document.transform(web_page, :extract, schema: schema)
+      assert {:error, :not_loaded, ^web_page} =
+               Document.transform(web_page, :extract, schema: schema)
     end
 
     test "passes through extraction errors" do
@@ -114,19 +126,19 @@ defmodule Mulberry.DocumentExtractTest do
 
       schema = %{type: "object", properties: %{}}
 
-      assert {:error, :extraction_failed, ^web_page} = 
-        Document.transform(web_page, :extract, schema: schema)
+      assert {:error, :extraction_failed, ^web_page} =
+               Document.transform(web_page, :extract, schema: schema)
     end
 
     test "uses custom transformer when provided" do
       defmodule CustomTransformer do
         @behaviour Mulberry.DocumentTransformer
-        
+
         def transform(document, :extract, _opts) do
           # Custom extraction logic
           {:ok, Map.put(document, :extracted_data, [%{"custom" => true}])}
         end
-        
+
         def transform(document, _transformation, _opts) do
           {:error, :unsupported, document}
         end
@@ -139,8 +151,12 @@ defmodule Mulberry.DocumentExtractTest do
 
       schema = %{type: "object", properties: %{}}
 
-      assert {:ok, updated_page} = 
-        Document.transform(web_page, :extract, schema: schema, transformer: CustomTransformer)
+      assert {:ok, updated_page} =
+               Document.transform(web_page, :extract,
+                 schema: schema,
+                 transformer: CustomTransformer
+               )
+
       assert updated_page.extracted_data == [%{"custom" => true}]
     end
 
@@ -159,7 +175,7 @@ defmodule Mulberry.DocumentExtractTest do
 
       schema = %{type: "object", properties: %{}}
 
-      Document.transform(web_page, :extract, 
+      Document.transform(web_page, :extract,
         schema: schema,
         verbose: true,
         provider: :openai,

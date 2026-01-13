@@ -45,15 +45,16 @@ defmodule Mulberry.Document.FacebookAdCompanyTest do
     end
 
     test "generate_summary/2 creates a summary from company data" do
-      company = FacebookAdCompany.new(%{
-        name: "Nike",
-        category: "Sportswear Store",
-        verification: "BLUE_VERIFIED",
-        likes: 39_558_683,
-        ig_username: "nike",
-        ig_followers: 302_060_936,
-        country: "US"
-      })
+      company =
+        FacebookAdCompany.new(%{
+          name: "Nike",
+          category: "Sportswear Store",
+          verification: "BLUE_VERIFIED",
+          likes: 39_558_683,
+          ig_username: "nike",
+          ig_followers: 302_060_936,
+          country: "US"
+        })
 
       expect(Text, :summarize, fn content, _opts ->
         assert content =~ "Company: Nike"
@@ -65,7 +66,9 @@ defmodule Mulberry.Document.FacebookAdCompanyTest do
       end)
 
       {:ok, updated_company} = Document.generate_summary(company, [])
-      assert updated_company.summary == "Nike is a verified sportswear store with millions of followers."
+
+      assert updated_company.summary ==
+               "Nike is a verified sportswear store with millions of followers."
     end
 
     test "generate_summary/2 handles errors gracefully" do
@@ -79,16 +82,17 @@ defmodule Mulberry.Document.FacebookAdCompanyTest do
     end
 
     test "generate_keywords/2 extracts keywords from company data" do
-      company = FacebookAdCompany.new(%{
-        name: "Nike",
-        category: "Sportswear Store",
-        entity_type: "BUSINESS",
-        country: "US",
-        verification: "BLUE_VERIFIED"
-      })
+      company =
+        FacebookAdCompany.new(%{
+          name: "Nike",
+          category: "Sportswear Store",
+          entity_type: "BUSINESS",
+          country: "US",
+          verification: "BLUE_VERIFIED"
+        })
 
       {:ok, updated_company} = Document.generate_keywords(company, [])
-      
+
       assert "Sportswear Store" in updated_company.keywords
       assert "BUSINESS" in updated_company.keywords
       assert "US" in updated_company.keywords
@@ -101,20 +105,21 @@ defmodule Mulberry.Document.FacebookAdCompanyTest do
     end
 
     test "to_text/2 generates a text representation of the company" do
-      company = FacebookAdCompany.new(%{
-        page_id: "15087023444",
-        name: "Nike",
-        category: "Sportswear Store",
-        verification: "BLUE_VERIFIED",
-        entity_type: "PERSON_PROFILE",
-        likes: 39_558_683,
-        ig_username: "nike",
-        ig_followers: 302_060_936,
-        ig_verification: true,
-        country: "US",
-        page_alias: "nike",
-        page_is_deleted: false
-      })
+      company =
+        FacebookAdCompany.new(%{
+          page_id: "15087023444",
+          name: "Nike",
+          category: "Sportswear Store",
+          verification: "BLUE_VERIFIED",
+          entity_type: "PERSON_PROFILE",
+          likes: 39_558_683,
+          ig_username: "nike",
+          ig_followers: 302_060_936,
+          ig_verification: true,
+          country: "US",
+          page_alias: "nike",
+          page_is_deleted: false
+        })
 
       {:ok, text} = Document.to_text(company, [])
 
@@ -144,10 +149,11 @@ defmodule Mulberry.Document.FacebookAdCompanyTest do
     end
 
     test "to_text/2 shows deleted page status" do
-      company = FacebookAdCompany.new(%{
-        name: "Deleted Company",
-        page_is_deleted: true
-      })
+      company =
+        FacebookAdCompany.new(%{
+          name: "Deleted Company",
+          page_is_deleted: true
+        })
 
       {:ok, text} = Document.to_text(company, [])
       assert text =~ "Page Status: Deleted"
@@ -168,7 +174,7 @@ defmodule Mulberry.Document.FacebookAdCompanyTest do
 
     test "to_chunks/2 splits the text into chunks" do
       company = FacebookAdCompany.new(%{name: "Nike", category: "Sportswear"})
-      
+
       expected_chunks = [
         %TextChunker.Chunk{text: "chunk1"},
         %TextChunker.Chunk{text: "chunk2"}
@@ -186,12 +192,13 @@ defmodule Mulberry.Document.FacebookAdCompanyTest do
 
   describe "number formatting" do
     test "formats large numbers with commas" do
-      company = FacebookAdCompany.new(%{
-        name: "Test",
-        likes: 1_234_567,
-        ig_username: "test",
-        ig_followers: 987_654_321
-      })
+      company =
+        FacebookAdCompany.new(%{
+          name: "Test",
+          likes: 1_234_567,
+          ig_username: "test",
+          ig_followers: 987_654_321
+        })
 
       {:ok, text} = Document.to_text(company, [])
       assert text =~ "Likes: 1,234,567"

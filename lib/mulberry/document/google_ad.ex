@@ -12,27 +12,27 @@ defmodule Mulberry.Document.GoogleAd do
           # Core identifiers
           advertiser_id: String.t() | nil,
           creative_id: String.t() | nil,
-          
+
           # Ad information
           format: String.t() | nil,
           ad_url: String.t() | nil,
           advertiser_name: String.t() | nil,
           domain: String.t() | nil,
-          
+
           # Time information
           first_shown: String.t() | nil,
           last_shown: String.t() | nil,
-          
+
           # Detailed information (from retriever)
           overall_impressions: map() | nil,
           creative_regions: [map()],
           region_stats: [map()],
           variations: [map()],
-          
+
           # Generated fields
           summary: String.t() | nil,
           keywords: [String.t()],
-          
+
           # Extra metadata
           meta: keyword()
         }
@@ -41,23 +41,23 @@ defmodule Mulberry.Document.GoogleAd do
     # Core identifiers
     :advertiser_id,
     :creative_id,
-    
+
     # Ad information
     :format,
     :ad_url,
     :advertiser_name,
     :domain,
-    
+
     # Time information
     :first_shown,
     :last_shown,
-    
+
     # Detailed information
     :overall_impressions,
-    
+
     # Generated fields
     :summary,
-    
+
     # Fields with defaults (must come last)
     creative_regions: [],
     region_stats: [],
@@ -96,14 +96,14 @@ defmodule Mulberry.Document.GoogleAd do
           # Merge the detailed data with the existing ad
           detailed_ad = merge_detailed_data(ad, response.content)
           {:ok, detailed_ad}
-          
+
         {:error, error} ->
           # Return the ad as-is if we can't load details
           Logger.warning("Failed to load Google ad details: #{inspect(error)}")
           {:ok, ad}
       end
     end
-    
+
     def load(%GoogleAd{} = ad, _opts) do
       # No ad URL to load from
       {:ok, ad}
@@ -170,17 +170,113 @@ defmodule Mulberry.Document.GoogleAd do
       end
     end
 
+    @spec to_markdown(GoogleAd.t(), keyword()) :: {:ok, String.t()} | {:error, any()}
+    def to_markdown(%GoogleAd{} = ad, _opts) do
+      # Google ads are structured data, return as markdown-formatted text
+      text = build_markdown_representation(ad)
+      {:ok, text}
+    end
+
     # Private helper functions
 
+    defp build_markdown_representation(%GoogleAd{} = ad) do
+      parts = [
+        "# Google Ad",
+        "",
+        if(ad.advertiser_name, do: "**Advertiser:** #{ad.advertiser_name}", else: nil),
+        if(ad.domain, do: "**Domain:** #{ad.domain}", else: nil),
+        if(ad.format, do: "**Format:** #{ad.format}", else: nil),
+        "",
+        format_md_date_range(ad),
+        format_md_impressions(ad),
+        format_md_regions(ad),
+        format_md_variations(ad)
+      ]
+
+      parts
+      |> Enum.filter(& &1)
+      |> Enum.join("\n")
+    end
+
+    defp format_md_date_range(%{first_shown: first, last_shown: last})
+         when is_binary(first) or is_binary(last) do
+      parts = ["## Date Range"]
+      parts = if first, do: parts ++ ["- **First shown:** #{first}"], else: parts
+      parts = if last, do: parts ++ ["- **Last shown:** #{last}"], else: parts
+      Enum.join(parts, "\n")
+    end
+
+    defp format_md_date_range(_), do: nil
+
+    defp format_md_impressions(%{overall_impressions: %{"min" => min, "max" => max}})
+         when not is_nil(min) or not is_nil(max) do
+      impression_text =
+        case {min, max} do
+          {nil, nil} -> "Unknown"
+          {min, nil} -> "#{min}+"
+          {nil, max} -> "Up to #{max}"
+          {min, max} -> "#{min} - #{max}"
+        end
+
+      "**Overall Impressions:** #{impression_text}"
+    end
+
+    defp format_md_impressions(_), do: nil
+
+    defp format_md_regions(%{creative_regions: regions}) when regions != [] do
+      region_names =
+        regions
+        |> Enum.map(& &1["regionName"])
+        |> Enum.filter(& &1)
+        |> Enum.join(", ")
+
+      if region_names != "", do: "**Regions:** #{region_names}", else: nil
+    end
+
+    defp format_md_regions(_), do: nil
+
+    defp format_md_variations(%{variations: variations}) when variations != [] do
+      parts = ["## Ad Variations"]
+
+      variation_texts = Enum.map(variations, &format_md_single_variation/1)
+
+      (parts ++ variation_texts)
+      |> Enum.join("\n\n")
+    end
+
+    defp format_md_variations(_), do: nil
+
+    defp format_md_single_variation(variation) do
+      parts = []
+
+      parts =
+        if variation["headline"],
+          do: parts ++ ["### #{variation["headline"]}"],
+          else: parts
+
+      parts =
+        if variation["description"],
+          do: parts ++ [variation["description"]],
+          else: parts
+
+      parts =
+        if variation["destinationUrl"],
+          do: parts ++ ["[View Ad](#{variation["destinationUrl"]})"],
+          else: parts
+
+      Enum.join(parts, "\n\n")
+    end
+
     defp merge_detailed_data(ad, details) when is_map(details) do
-      %{ad |
-        overall_impressions: details["overallImpressions"],
-        creative_regions: details["creativeRegions"] || [],
-        region_stats: details["regionStats"] || [],
-        variations: details["variations"] || []
+      %{
+        ad
+        | overall_impressions: details["overallImpressions"],
+          creative_regions: details["creativeRegions"] || [],
+          region_stats: details["regionStats"] || [],
+          variations: details["variations"] || []
       }
     end
-    
+
     defp merge_detailed_data(ad, _), do: ad
 
     defp get_content_for_summary(%GoogleAd{} = ad) do
@@ -200,23 +296,24 @@ defmodule Mulberry.Document.GoogleAd do
 
     defp extract_keywords(%GoogleAd{} = ad) do
       keywords = []
-      
+
       # Add format as keyword
       keywords = if ad.format, do: [ad.format | keywords], else: keywords
-      
+
       # Extract keywords from variations
       keywords = keywords ++ extract_variation_keywords(ad.variations)
-      
+
       # Add regions as keywords
       keywords = keywords ++ extract_region_keywords(ad.creative_regions)
-      
+
       Enum.uniq(keywords)
     end
-    
+
     defp extract_variation_keywords(variations) do
       variations
       |> Enum.flat_map(fn var ->
         headline = var["headline"] || ""
+
         headline
         |> String.split([" ", "-", "|"])
         |> Enum.map(&String.trim/1)
@@ -224,7 +321,7 @@ defmodule Mulberry.Document.GoogleAd do
       end)
       |> Enum.uniq()
     end
-    
+
     defp extract_region_keywords(regions) do
       regions
       |> Enum.map(& &1["regionName"])
@@ -251,9 +348,12 @@ defmodule Mulberry.Document.GoogleAd do
     defp format_basic_info(ad) do
       parts = []
       parts = if ad.creative_id, do: parts ++ ["Creative ID: #{ad.creative_id}"], else: parts
-      parts = if ad.advertiser_id, do: parts ++ ["Advertiser ID: #{ad.advertiser_id}"], else: parts
+
+      parts =
+        if ad.advertiser_id, do: parts ++ ["Advertiser ID: #{ad.advertiser_id}"], else: parts
+
       parts = if ad.format, do: parts ++ ["Format: #{ad.format}"], else: parts
-      
+
       case parts do
         [] -> nil
         _ -> Enum.join(parts, "\n")
@@ -262,75 +362,84 @@ defmodule Mulberry.Document.GoogleAd do
 
     defp format_advertiser_info(ad) do
       parts = []
-      parts = if ad.advertiser_name, do: parts ++ ["Advertiser: #{ad.advertiser_name}"], else: parts
+
+      parts =
+        if ad.advertiser_name, do: parts ++ ["Advertiser: #{ad.advertiser_name}"], else: parts
+
       parts = if ad.domain, do: parts ++ ["Domain: #{ad.domain}"], else: parts
-      
+
       case parts do
         [] -> nil
         _ -> "\n" <> Enum.join(parts, "\n")
       end
     end
 
-    defp format_date_range(%{first_shown: first, last_shown: last}) 
+    defp format_date_range(%{first_shown: first, last_shown: last})
          when is_binary(first) or is_binary(last) do
       parts = ["\nDate Range:"]
       parts = if first, do: parts ++ ["First shown: #{first}"], else: parts
       parts = if last, do: parts ++ ["Last shown: #{last}"], else: parts
       Enum.join(parts, "\n")
     end
-    
+
     defp format_date_range(_), do: nil
 
-    defp format_impressions(%{overall_impressions: %{"min" => min, "max" => max}}) 
+    defp format_impressions(%{overall_impressions: %{"min" => min, "max" => max}})
          when not is_nil(min) or not is_nil(max) do
-      impression_text = case {min, max} do
-        {nil, nil} -> "Unknown"
-        {min, nil} -> "#{min}+"
-        {nil, max} -> "Up to #{max}"
-        {min, max} -> "#{min} - #{max}"
-      end
-      
+      impression_text =
+        case {min, max} do
+          {nil, nil} -> "Unknown"
+          {min, nil} -> "#{min}+"
+          {nil, max} -> "Up to #{max}"
+          {min, max} -> "#{min} - #{max}"
+        end
+
       "\nOverall Impressions: #{impression_text}"
     end
-    
+
     defp format_impressions(_), do: nil
 
     defp format_regions(%{creative_regions: regions}) when regions != [] do
-      region_names = regions
+      region_names =
+        regions
         |> Enum.map(& &1["regionName"])
         |> Enum.filter(& &1)
         |> Enum.join(", ")
-        
+
       if region_names != "", do: "\nRegions: #{region_names}", else: nil
     end
-    
+
     defp format_regions(_), do: nil
 
     defp format_variations(%{variations: variations}) when variations != [] do
       parts = ["\nAd Variations:"]
-      
+
       variation_texts = Enum.map(variations, &format_single_variation/1)
-      parts ++ variation_texts
+
+      (parts ++ variation_texts)
       |> Enum.join("\n")
     end
-    
+
     defp format_variations(_), do: nil
-    
+
     defp format_single_variation(variation) do
       parts = ["---"]
-      
-      parts = if variation["headline"], 
-        do: parts ++ ["Headline: #{variation["headline"]}"], 
-        else: parts
-        
-      parts = if variation["description"], 
-        do: parts ++ ["Description: #{variation["description"]}"], 
-        else: parts
-        
-      parts = if variation["destinationUrl"], 
-        do: parts ++ ["Destination: #{variation["destinationUrl"]}"], 
-        else: parts
-        
+
+      parts =
+        if variation["headline"],
+          do: parts ++ ["Headline: #{variation["headline"]}"],
+          else: parts
+
+      parts =
+        if variation["description"],
+          do: parts ++ ["Description: #{variation["description"]}"],
+          else: parts
+
+      parts =
+        if variation["destinationUrl"],
+          do: parts ++ ["Destination: #{variation["destinationUrl"]}"],
+          else: parts
+
       Enum.join(parts, "\n")
     end
   end
