@@ -84,4 +84,24 @@ defprotocol Mulberry.Document do
   """
   @spec to_chunks(t, Keyword.t()) :: {:ok, [Chunk.t()]} | {:error, any()}
   def to_chunks(value, opts \\ [])
+
+  @doc """
+  Converts the document to Markdown format.
+
+  ## Options
+    - `:clean_whitespace` - If true, removes excessive whitespace (default: false)
+    - `:remove_empty_sections` - If true, removes empty sections (default: false)
+
+  ## Definitions
+    - "excessive whitespace": More than 2 consecutive newlines, lines with only whitespace,
+      leading/trailing whitespace on each line
+    - "empty sections": Heading with no non-whitespace content under it (< 50 chars),
+      sections containing only structural elements
+
+  ## Returns
+    - `{:ok, String.t()}` - Markdown content
+    - `{:error, reason}` - If conversion fails (e.g., :not_loaded)
+  """
+  @spec to_markdown(t, Keyword.t()) :: {:ok, String.t()} | {:error, any()}
+  def to_markdown(value, opts \\ [])
 end
