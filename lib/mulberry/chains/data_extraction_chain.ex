@@ -157,23 +157,20 @@ defmodule Mulberry.Chains.DataExtractionChain do
 
     with {:ok, extract_function} <- build_extract_function(schema),
          {:ok, chain} <- build_chain(llm, system_message, extract_function, text, verbose) do
-      case LLMChain.run(chain) do
-        {:ok, updated_chain, _response} ->
-          case extract_results(updated_chain) do
-            {:ok, results} -> {:ok, results}
-            {:error, reason} -> {:error, reason}
-          end
-
-        {:error, _updated_chain, reason} ->
-          {:error, reason}
-
-        other ->
-          {:error, {:unexpected_response, other}}
-      end
+      chain
+      |> LLMChain.run()
+      |> handle_llm_response()
     else
       {:error, reason} -> {:error, reason}
     end
   end
+
+  # Handle LLMChain.run/1 response - supports both 2-tuple and 3-tuple formats
+  defp handle_llm_response({:ok, updated_chain, _response}), do: extract_results(updated_chain)
+  defp handle_llm_response({:ok, updated_chain}), do: extract_results(updated_chain)
+  defp handle_llm_response({:error, _updated_chain, reason}), do: {:error, reason}
+  defp handle_llm_response({:error, reason}), do: {:error, reason}
+  defp handle_llm_response(other), do: {:error, {:unexpected_response, other}}
 
   @doc """
   Creates a new DataExtractionChain struct with the given attributes.
