@@ -163,6 +163,13 @@ defmodule DataForSEO.TaskManager do
   end
 
   @impl true
+  def handle_info(:check_status, state) do
+    # Task is no longer monitoring (completed, failed, or fetching)
+    # Simply ignore the stale check_status message
+    {:noreply, state}
+  end
+
+  @impl true
   def handle_info(:fetch_results, %{status: :fetching} = state) do
     case fetch_all_results(state) do
       {:ok, results} ->
