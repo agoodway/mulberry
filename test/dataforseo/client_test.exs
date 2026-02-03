@@ -269,6 +269,142 @@ defmodule DataForSEO.ClientTest do
     end
   end
 
+  describe "per-request credentials" do
+    test "uses tuple credentials from opts" do
+      Application.delete_env(:mulberry, :dataforseo)
+
+      expect(Req, :post, fn _url, opts ->
+        assert opts[:auth] == {:basic, "tuple_user:tuple_pass"}
+        {:ok, %{status: 200, body: %{"status_code" => 20_000}}}
+      end)
+
+      assert {:ok, _} =
+               Client.create_task("serp/google/events", [],
+                 credentials: {"tuple_user", "tuple_pass"}
+               )
+    end
+
+    test "uses atom map credentials from opts" do
+      Application.delete_env(:mulberry, :dataforseo)
+
+      expect(Req, :post, fn _url, opts ->
+        assert opts[:auth] == {:basic, "atom_user:atom_pass"}
+        {:ok, %{status: 200, body: %{"status_code" => 20_000}}}
+      end)
+
+      assert {:ok, _} =
+               Client.create_task("serp/google/events", [],
+                 credentials: %{username: "atom_user", password: "atom_pass"}
+               )
+    end
+
+    test "uses string map credentials from opts" do
+      Application.delete_env(:mulberry, :dataforseo)
+
+      expect(Req, :post, fn _url, opts ->
+        assert opts[:auth] == {:basic, "string_user:string_pass"}
+        {:ok, %{status: 200, body: %{"status_code" => 20_000}}}
+      end)
+
+      assert {:ok, _} =
+               Client.create_task("serp/google/events", [],
+                 credentials: %{"username" => "string_user", "password" => "string_pass"}
+               )
+    end
+
+    test "falls back to config when no credentials in opts" do
+      expect(Req, :post, fn _url, opts ->
+        assert opts[:auth] == {:basic, "test_user:test_pass"}
+        {:ok, %{status: 200, body: %{"status_code" => 20_000}}}
+      end)
+
+      assert {:ok, _} = Client.create_task("serp/google/events", [])
+    end
+
+    test "returns error for invalid credentials format" do
+      assert {:error, :invalid_credentials_format} =
+               Client.create_task("serp/google/events", [], credentials: "invalid")
+    end
+
+    test "returns error for credentials with missing fields" do
+      assert {:error, :invalid_credentials_format} =
+               Client.create_task("serp/google/events", [], credentials: %{username: "only_user"})
+    end
+
+    test "returns error for credentials with nil values" do
+      assert {:error, :invalid_credentials_format} =
+               Client.create_task("serp/google/events", [], credentials: {nil, nil})
+    end
+
+    test "create_live_task uses credentials from opts" do
+      Application.delete_env(:mulberry, :dataforseo)
+
+      expect(Req, :post, fn _url, opts ->
+        assert opts[:auth] == {:basic, "live_user:live_pass"}
+        {:ok, %{status: 200, body: %{"status_code" => 20_000, "tasks" => []}}}
+      end)
+
+      assert {:ok, _} =
+               Client.create_live_task("business_data/business_listings/search", [],
+                 credentials: {"live_user", "live_pass"}
+               )
+    end
+
+    test "check_ready_tasks uses credentials from opts" do
+      Application.delete_env(:mulberry, :dataforseo)
+
+      expect(Req, :get, fn _url, opts ->
+        assert opts[:auth] == {:basic, "check_user:check_pass"}
+        {:ok, %{status: 200, body: %{"status_code" => 20_000, "tasks" => []}}}
+      end)
+
+      assert {:ok, _} =
+               Client.check_ready_tasks("serp/google/events",
+                 credentials: {"check_user", "check_pass"}
+               )
+    end
+
+    test "fetch_task_results uses credentials from opts" do
+      Application.delete_env(:mulberry, :dataforseo)
+
+      expect(Req, :get, fn _url, opts ->
+        assert opts[:auth] == {:basic, "fetch_user:fetch_pass"}
+        {:ok, %{status: 200, body: %{"status_code" => 20_000}}}
+      end)
+
+      assert {:ok, _} =
+               Client.fetch_task_results("serp/google/events", "task123", "advanced",
+                 credentials: {"fetch_user", "fetch_pass"}
+               )
+    end
+
+    test "returns error for empty username" do
+      assert {:error, :empty_credentials} =
+               Client.create_task("serp/google/events", [], credentials: {"", "password"})
+    end
+
+    test "returns error for empty password" do
+      assert {:error, :empty_credentials} =
+               Client.create_task("serp/google/events", [], credentials: {"username", ""})
+    end
+
+    test "returns error for empty credentials in atom map" do
+      assert {:error, :empty_credentials} =
+               Client.create_task("serp/google/events", [],
+                 credentials: %{username: "", password: "pass"}
+               )
+    end
+
+    test "returns error for credentials that are too long" do
+      long_username = String.duplicate("a", 501)
+
+      assert {:error, :credentials_too_long} =
+               Client.create_task("serp/google/events", [],
+                 credentials: {long_username, "password"}
+               )
+    end
+  end
+
   describe "fetch_task_results/3" do
     test "fetches task results successfully with default endpoint" do
       task_type = "serp/google/events"

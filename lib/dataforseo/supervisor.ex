@@ -24,16 +24,31 @@ defmodule DataForSEO.Supervisor do
     - `task_module` - Module implementing ClientBehaviour
     - `task_params` - Parameters for the task
     - `opts` - Additional options for the task manager
-    
+
   ## Options
     - `:callback` - Function to call when results are ready
+    - `:credentials` - DataForSEO API credentials for this request (optional).
+      Supports tuple `{username, password}`, atom map `%{username: u, password: p}`,
+      or string map `%{"username" => u, "password" => p}`. Falls back to application
+      config if not provided.
     - `:poll_interval_ms` - Polling interval in milliseconds
     - `:timeout_ms` - Total timeout for the task
     - `:task_id` - Custom task ID (auto-generated if not provided)
-    
+
   ## Returns
     - `{:ok, pid}` - PID of the started task manager
     - `{:error, reason}` - Error if starting failed
+
+  ## Examples
+
+      # Using application config credentials (default)
+      DataForSEO.Supervisor.start_task(GoogleReviews, %{cid: "123"})
+
+      # Using per-request credentials for parallel calls with different accounts
+      DataForSEO.Supervisor.start_task(GoogleReviews, %{cid: "123"},
+        credentials: %{username: "account1", password: "pass1"},
+        callback: fn result -> handle(result) end
+      )
   """
   @spec start_task(module(), map(), keyword()) :: {:ok, pid()} | {:error, term()}
   def start_task(task_module, task_params, opts \\ []) do

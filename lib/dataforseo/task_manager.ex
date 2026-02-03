@@ -19,6 +19,8 @@ defmodule DataForSEO.TaskManager do
     @moduledoc """
     Internal state for the task manager.
     """
+    @derive {Inspect, except: [:credentials]}
+
     @type t :: %__MODULE__{
             task_module: module(),
             task_params: map(),
@@ -30,13 +32,15 @@ defmodule DataForSEO.TaskManager do
             poll_timer: reference() | nil,
             created_at: DateTime.t(),
             updated_at: DateTime.t(),
-            callback: function() | nil
+            callback: function() | nil,
+            credentials: DataForSEO.Client.credentials() | nil
           }
 
     defstruct [
       :task_module,
       :task_params,
       :callback,
+      :credentials,
       task_ids: [],
       status: :initializing,
       results: [],
@@ -63,6 +67,7 @@ defmodule DataForSEO.TaskManager do
     - `:task_module` - Module implementing ClientBehaviour (required)
     - `:task_params` - Parameters for the task (required)
     - `:callback` - Function to call when results are ready (optional)
+    - `:credentials` - Credentials for DataForSEO API (optional, falls back to config)
     - `:poll_interval_ms` - Polling interval in milliseconds
     - `:timeout_ms` - Total timeout for the task
   """
@@ -94,11 +99,13 @@ defmodule DataForSEO.TaskManager do
     task_module = Keyword.fetch!(opts, :task_module)
     task_params = Keyword.fetch!(opts, :task_params)
     callback = Keyword.get(opts, :callback)
+    credentials = Keyword.get(opts, :credentials)
 
     state = %State{
       task_module: task_module,
       task_params: task_params,
       callback: callback,
+      credentials: credentials,
       created_at: DateTime.utc_now(),
       updated_at: DateTime.utc_now()
     }
@@ -260,9 +267,9 @@ defmodule DataForSEO.TaskManager do
     is_live = live_endpoint?(state.task_module)
 
     if is_live do
-      create_live_task(task_type, payload, state.task_module)
+      create_live_task(task_type, payload, state.task_module, state)
     else
-      create_async_task(task_type, payload, state.task_module)
+      create_async_task(task_type, payload, state.task_module, state)
     end
   end
 
@@ -274,9 +281,9 @@ defmodule DataForSEO.TaskManager do
     end
   end
 
-  defp create_live_task(task_type, payload, task_module) do
+  defp create_live_task(task_type, payload, task_module, state) do
     # Live endpoint - results come back immediately
-    case Client.create_live_task(task_type, payload) do
+    case Client.create_live_task(task_type, payload, client_opts(state)) do
       {:ok, response} ->
         # Parse results directly from the live response
         case task_module.parse_task_results(response) do
@@ -294,9 +301,9 @@ defmodule DataForSEO.TaskManager do
     end
   end
 
-  defp create_async_task(task_type, payload, task_module) do
+  defp create_async_task(task_type, payload, task_module, state) do
     # Async task endpoint - original behavior
-    case Client.create_task(task_type, payload) do
+    case Client.create_task(task_type, payload, client_opts(state)) do
       {:ok, response} ->
         task_module.parse_task_response(response)
 
@@ -308,7 +315,7 @@ defmodule DataForSEO.TaskManager do
   defp check_ready_tasks(state) do
     task_type = state.task_module.task_type()
 
-    case Client.check_ready_tasks(task_type) do
+    case Client.check_ready_tasks(task_type, client_opts(state)) do
       {:ok, response} ->
         ready_ids = state.task_module.parse_ready_tasks(response)
         # Filter to only our task IDs
@@ -325,7 +332,7 @@ defmodule DataForSEO.TaskManager do
 
     results =
       state.task_ids
-      |> Enum.map(&fetch_single_result(&1, task_type, state.task_module))
+      |> Enum.map(&fetch_single_result(&1, task_type, state.task_module, state))
 
     # Check if all fetches were successful
     errors =
@@ -404,10 +411,10 @@ defmodule DataForSEO.TaskManager do
     elapsed > timeout
   end
 
-  defp fetch_single_result(task_id, task_type, task_module) do
+  defp fetch_single_result(task_id, task_type, task_module, state) do
     endpoint = get_result_endpoint(task_module)
 
-    case Client.fetch_task_results(task_type, task_id, endpoint) do
+    case Client.fetch_task_results(task_type, task_id, endpoint, client_opts(state)) do
       {:ok, response} ->
         case task_module.parse_task_results(response) do
           {:ok, parsed} -> {:ok, {task_id, parsed}}
@@ -437,4 +444,15 @@ defmodule DataForSEO.TaskManager do
   # For single task results, unwrap the list for convenience
   defp unwrap_single_result([single_result]), do: single_result
   defp unwrap_single_result(multiple), do: multiple
+
+  # Build opts for Client calls with credentials if present
+  defp client_opts(%{credentials: nil}), do: []
+  defp client_opts(%{credentials: creds}), do: [credentials: creds]
+
+  # Redact credentials from crash dumps and observer
+  @impl true
+  def format_status(_reason, [_pdict, state]) do
+    sanitized = %{state | credentials: :redacted}
+    {:state, sanitized}
+  end
 end

@@ -628,7 +628,10 @@ defmodule Mix.Tasks.Crawl do
       )
 
     Mix.shell().info("\nMarkdown files saved to: #{output_dir}")
-    Mix.shell().info("Written: #{stats.written}, Skipped: #{stats.skipped}, Errors: #{stats.errors}")
+
+    Mix.shell().info(
+      "Written: #{stats.written}, Skipped: #{stats.skipped}, Errors: #{stats.errors}"
+    )
   end
 
   defp write_combined_markdown(results, output_dir, opts) do

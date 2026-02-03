@@ -69,7 +69,7 @@ defmodule DataForSEO.TaskManagerTest do
     test "creates task successfully and transitions to monitoring" do
       params = %{keyword: "concerts", location_name: "New York"}
 
-      expect(Client, :create_task, fn _task_type, _payload ->
+      expect(Client, :create_task, fn _task_type, _payload, _opts ->
         {:ok, %{"tasks" => [%{"id" => "task123", "status_code" => 20_100}]}}
       end)
 
@@ -88,7 +88,7 @@ defmodule DataForSEO.TaskManagerTest do
     test "handles task creation error and retries" do
       params = %{keyword: "concerts", location_name: "New York"}
 
-      expect(Client, :create_task, 2, fn _task_type, _payload ->
+      expect(Client, :create_task, 2, fn _task_type, _payload, _opts ->
         case Process.get(:attempt, 0) do
           0 ->
             Process.put(:attempt, 1)
@@ -114,7 +114,7 @@ defmodule DataForSEO.TaskManagerTest do
     test "fails after max retries on task creation" do
       params = %{keyword: "concerts", location_name: "New York"}
 
-      expect(Client, :create_task, 4, fn _task_type, _payload ->
+      expect(Client, :create_task, 4, fn _task_type, _payload, _opts ->
         {:error, {:api_error, 500, "Server Error"}}
       end)
 
@@ -140,11 +140,11 @@ defmodule DataForSEO.TaskManagerTest do
     test "polls for ready tasks and fetches results" do
       params = %{keyword: "concerts", location_name: "New York"}
 
-      expect(Client, :create_task, fn _task_type, _payload ->
+      expect(Client, :create_task, fn _task_type, _payload, _opts ->
         {:ok, %{"tasks" => [%{"id" => "task123", "status_code" => 20_100}]}}
       end)
 
-      expect(Client, :check_ready_tasks, fn _task_type ->
+      expect(Client, :check_ready_tasks, fn _task_type, _opts ->
         {:ok,
          %{
            "tasks" => [
@@ -153,7 +153,7 @@ defmodule DataForSEO.TaskManagerTest do
          }}
       end)
 
-      expect(Client, :fetch_task_results, fn _task_type, "task123", _endpoint ->
+      expect(Client, :fetch_task_results, fn _task_type, "task123", _endpoint, _opts ->
         {:ok,
          %{
            "tasks" => [
@@ -188,11 +188,11 @@ defmodule DataForSEO.TaskManagerTest do
     test "continues polling when tasks not ready" do
       params = %{keyword: "concerts", location_name: "New York"}
 
-      expect(Client, :create_task, fn _task_type, _payload ->
+      expect(Client, :create_task, fn _task_type, _payload, _opts ->
         {:ok, %{"tasks" => [%{"id" => "task123", "status_code" => 20_100}]}}
       end)
 
-      expect(Client, :check_ready_tasks, 2, fn _task_type ->
+      expect(Client, :check_ready_tasks, 2, fn _task_type, _opts ->
         case Process.get(:check_count, 0) do
           0 ->
             Process.put(:check_count, 1)
@@ -208,7 +208,7 @@ defmodule DataForSEO.TaskManagerTest do
         end
       end)
 
-      expect(Client, :fetch_task_results, fn _task_type, "task123", _endpoint ->
+      expect(Client, :fetch_task_results, fn _task_type, "task123", _endpoint, _opts ->
         {:ok,
          %{
            "tasks" => [
@@ -231,12 +231,12 @@ defmodule DataForSEO.TaskManagerTest do
     test "handles timeout when tasks never ready" do
       params = %{keyword: "concerts", location_name: "New York"}
 
-      expect(Client, :create_task, fn _task_type, _payload ->
+      expect(Client, :create_task, fn _task_type, _payload, _opts ->
         {:ok, %{"tasks" => [%{"id" => "task123", "status_code" => 20_100}]}}
       end)
 
       # Always return empty ready tasks
-      stub(Client, :check_ready_tasks, fn _task_type ->
+      stub(Client, :check_ready_tasks, fn _task_type, _opts ->
         {:ok, %{"tasks" => []}}
       end)
 
@@ -257,7 +257,7 @@ defmodule DataForSEO.TaskManagerTest do
     test "fetches results for multiple tasks" do
       params = %{keyword: "concerts", location_name: "New York"}
 
-      expect(Client, :create_task, fn _task_type, _payload ->
+      expect(Client, :create_task, fn _task_type, _payload, _opts ->
         {:ok,
          %{
            "tasks" => [
@@ -267,7 +267,7 @@ defmodule DataForSEO.TaskManagerTest do
          }}
       end)
 
-      expect(Client, :check_ready_tasks, fn _task_type ->
+      expect(Client, :check_ready_tasks, fn _task_type, _opts ->
         {:ok,
          %{
            "tasks" => [
@@ -279,7 +279,7 @@ defmodule DataForSEO.TaskManagerTest do
          }}
       end)
 
-      expect(Client, :fetch_task_results, 2, fn _task_type, task_id, _endpoint ->
+      expect(Client, :fetch_task_results, 2, fn _task_type, task_id, _endpoint, _opts ->
         {:ok,
          %{
            "tasks" => [
@@ -310,11 +310,11 @@ defmodule DataForSEO.TaskManagerTest do
     test "handles fetch error and retries" do
       params = %{keyword: "concerts", location_name: "New York"}
 
-      expect(Client, :create_task, fn _task_type, _payload ->
+      expect(Client, :create_task, fn _task_type, _payload, _opts ->
         {:ok, %{"tasks" => [%{"id" => "task123", "status_code" => 20_100}]}}
       end)
 
-      expect(Client, :check_ready_tasks, fn _task_type ->
+      expect(Client, :check_ready_tasks, fn _task_type, _opts ->
         {:ok,
          %{
            "tasks" => [
@@ -323,7 +323,7 @@ defmodule DataForSEO.TaskManagerTest do
          }}
       end)
 
-      expect(Client, :fetch_task_results, 2, fn _task_type, "task123", _endpoint ->
+      expect(Client, :fetch_task_results, 2, fn _task_type, "task123", _endpoint, _opts ->
         case Process.get(:fetch_attempt, 0) do
           0 ->
             Process.put(:fetch_attempt, 1)
@@ -359,11 +359,11 @@ defmodule DataForSEO.TaskManagerTest do
         send(test_pid, {:callback_called, result})
       end
 
-      expect(Client, :create_task, fn _task_type, _payload ->
+      expect(Client, :create_task, fn _task_type, _payload, _opts ->
         {:ok, %{"tasks" => [%{"id" => "task123", "status_code" => 20_100}]}}
       end)
 
-      expect(Client, :check_ready_tasks, fn _task_type ->
+      expect(Client, :check_ready_tasks, fn _task_type, _opts ->
         {:ok,
          %{
            "tasks" => [
@@ -372,7 +372,7 @@ defmodule DataForSEO.TaskManagerTest do
          }}
       end)
 
-      expect(Client, :fetch_task_results, fn _task_type, "task123", _endpoint ->
+      expect(Client, :fetch_task_results, fn _task_type, "task123", _endpoint, _opts ->
         {:ok,
          %{
            "tasks" => [
@@ -402,7 +402,7 @@ defmodule DataForSEO.TaskManagerTest do
         send(test_pid, {:callback_called, result})
       end
 
-      expect(Client, :create_task, fn _task_type, _payload ->
+      expect(Client, :create_task, fn _task_type, _payload, _opts ->
         {:ok,
          %{
            "tasks" => [
@@ -412,7 +412,7 @@ defmodule DataForSEO.TaskManagerTest do
          }}
       end)
 
-      expect(Client, :check_ready_tasks, fn _task_type ->
+      expect(Client, :check_ready_tasks, fn _task_type, _opts ->
         {:ok,
          %{
            "tasks" => [
@@ -424,7 +424,7 @@ defmodule DataForSEO.TaskManagerTest do
          }}
       end)
 
-      expect(Client, :fetch_task_results, 2, fn _task_type, _task_id, _endpoint ->
+      expect(Client, :fetch_task_results, 2, fn _task_type, _task_id, _endpoint, _opts ->
         {:ok,
          %{
            "tasks" => [
@@ -455,7 +455,7 @@ defmodule DataForSEO.TaskManagerTest do
         send(test_pid, {:callback_called, result})
       end
 
-      expect(Client, :create_task, 4, fn _task_type, _payload ->
+      expect(Client, :create_task, 4, fn _task_type, _payload, _opts ->
         {:error, {:api_error, 500, "Server Error"}}
       end)
 
@@ -476,11 +476,11 @@ defmodule DataForSEO.TaskManagerTest do
     test "returns current status" do
       params = %{keyword: "concerts", location_name: "New York"}
 
-      stub(Client, :create_task, fn _task_type, _payload ->
+      stub(Client, :create_task, fn _task_type, _payload, _opts ->
         {:ok, %{"tasks" => [%{"id" => "task123", "status_code" => 20_100}]}}
       end)
 
-      stub(Client, :check_ready_tasks, fn _task_type ->
+      stub(Client, :check_ready_tasks, fn _task_type, _opts ->
         {:ok, %{"tasks" => []}}
       end)
 
@@ -498,15 +498,141 @@ defmodule DataForSEO.TaskManagerTest do
     end
   end
 
+  describe "credentials passthrough" do
+    test "passes credentials to Client.create_task" do
+      params = %{keyword: "concerts", location_name: "New York"}
+      credentials = {"account1", "secret1"}
+
+      expect(Client, :create_task, fn _task_type, _payload, opts ->
+        assert opts[:credentials] == credentials
+        {:ok, %{"tasks" => [%{"id" => "task123", "status_code" => 20_100}]}}
+      end)
+
+      stub(Client, :check_ready_tasks, fn _task_type, _opts ->
+        {:ok, %{"tasks" => []}}
+      end)
+
+      {:ok, pid} =
+        TaskManager.start_link(
+          task_module: GoogleEvents,
+          task_params: params,
+          credentials: credentials
+        )
+
+      :timer.sleep(50)
+
+      assert {:ok, status} = TaskManager.get_status(pid)
+      assert status.status == :monitoring
+
+      GenServer.stop(pid)
+    end
+
+    test "passes credentials to Client.check_ready_tasks" do
+      params = %{keyword: "concerts", location_name: "New York"}
+      credentials = %{username: "user2", password: "pass2"}
+
+      expect(Client, :create_task, fn _task_type, _payload, opts ->
+        assert opts[:credentials] == credentials
+        {:ok, %{"tasks" => [%{"id" => "task123", "status_code" => 20_100}]}}
+      end)
+
+      expect(Client, :check_ready_tasks, fn _task_type, opts ->
+        assert opts[:credentials] == credentials
+        {:ok, %{"tasks" => []}}
+      end)
+
+      {:ok, pid} =
+        TaskManager.start_link(
+          task_module: GoogleEvents,
+          task_params: params,
+          credentials: credentials
+        )
+
+      :timer.sleep(150)
+
+      GenServer.stop(pid)
+    end
+
+    test "passes credentials to Client.fetch_task_results" do
+      params = %{keyword: "concerts", location_name: "New York"}
+      credentials = %{"username" => "user3", "password" => "pass3"}
+
+      expect(Client, :create_task, fn _task_type, _payload, opts ->
+        assert opts[:credentials] == credentials
+        {:ok, %{"tasks" => [%{"id" => "task123", "status_code" => 20_100}]}}
+      end)
+
+      expect(Client, :check_ready_tasks, fn _task_type, opts ->
+        assert opts[:credentials] == credentials
+
+        {:ok,
+         %{
+           "tasks" => [
+             %{"result_count" => 1, "result" => [%{"id" => "task123"}]}
+           ]
+         }}
+      end)
+
+      expect(Client, :fetch_task_results, fn _task_type, "task123", _endpoint, opts ->
+        assert opts[:credentials] == credentials
+
+        {:ok,
+         %{
+           "tasks" => [
+             %{"result" => [%{"items" => [%{"type" => "event_item", "title" => "Concert"}]}]}
+           ]
+         }}
+      end)
+
+      {:ok, pid} =
+        TaskManager.start_link(
+          task_module: GoogleEvents,
+          task_params: params,
+          credentials: credentials
+        )
+
+      :timer.sleep(300)
+
+      assert {:ok, status} = TaskManager.get_status(pid)
+      assert status.status == :completed
+
+      GenServer.stop(pid)
+    end
+
+    test "passes empty opts when no credentials provided" do
+      params = %{keyword: "concerts", location_name: "New York"}
+
+      expect(Client, :create_task, fn _task_type, _payload, opts ->
+        assert opts == []
+        {:ok, %{"tasks" => [%{"id" => "task123", "status_code" => 20_100}]}}
+      end)
+
+      stub(Client, :check_ready_tasks, fn _task_type, opts ->
+        assert opts == []
+        {:ok, %{"tasks" => []}}
+      end)
+
+      {:ok, pid} =
+        TaskManager.start_link(
+          task_module: GoogleEvents,
+          task_params: params
+        )
+
+      :timer.sleep(150)
+
+      GenServer.stop(pid)
+    end
+  end
+
   describe "cancel/1" do
     test "stops the task manager" do
       params = %{keyword: "concerts", location_name: "New York"}
 
-      stub(Client, :create_task, fn _task_type, _payload ->
+      stub(Client, :create_task, fn _task_type, _payload, _opts ->
         {:ok, %{"tasks" => [%{"id" => "task123", "status_code" => 20_100}]}}
       end)
 
-      stub(Client, :check_ready_tasks, fn _task_type ->
+      stub(Client, :check_ready_tasks, fn _task_type, _opts ->
         {:ok, %{"tasks" => []}}
       end)
 

@@ -20,7 +20,7 @@ defmodule DataForSEO.BusinessListingsIntegrationTest do
 
     # Mock Client calls to prevent actual API requests
     # BusinessListings uses live endpoint, so mock create_live_task
-    stub(Client, :create_live_task, fn _task_type, _payload ->
+    stub(Client, :create_live_task, fn _task_type, _payload, _opts ->
       {:ok,
        %{
          "tasks" => [
@@ -363,7 +363,7 @@ defmodule DataForSEO.BusinessListingsIntegrationTest do
   describe "error handling with business listings" do
     test "handles API error response gracefully" do
       # Mock an error response for live endpoint
-      expect(Client, :create_live_task, fn _task_type, _payload ->
+      expect(Client, :create_live_task, fn _task_type, _payload, _opts ->
         {:ok,
          %{
            "tasks" => [
@@ -388,7 +388,7 @@ defmodule DataForSEO.BusinessListingsIntegrationTest do
 
     test "handles network timeout gracefully" do
       # Mock a timeout for live endpoint
-      expect(Client, :create_live_task, fn _task_type, _payload ->
+      expect(Client, :create_live_task, fn _task_type, _payload, _opts ->
         {:error, :timeout}
       end)
 
