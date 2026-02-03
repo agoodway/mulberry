@@ -29,6 +29,7 @@ mulberry-*.tar
 /tmp/
 
 .scratchpad
+scratchpads/
 
 # Environment variables and secrets
 .env
