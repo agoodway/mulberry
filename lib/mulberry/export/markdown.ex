@@ -378,9 +378,14 @@ defmodule Mulberry.Export.Markdown do
     opts = [output_dir: output_dir]
 
     case pattern do
-      "url" -> Filename.from_url(result.url, opts)
-      "title" -> Filename.from_title(result.title || "", Keyword.put(opts, :fallback_url, result.url))
-      "hash" -> Filename.from_hash(result.url, opts)
+      "url" ->
+        Filename.from_url(result.url, opts)
+
+      "title" ->
+        Filename.from_title(result.title || "", Keyword.put(opts, :fallback_url, result.url))
+
+      "hash" ->
+        Filename.from_hash(result.url, opts)
     end
   end
 

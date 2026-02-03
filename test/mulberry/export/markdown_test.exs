@@ -102,12 +102,13 @@ defmodule Mulberry.Export.MarkdownTest do
 
     test "handles parallel writes", %{test_dir: test_dir} do
       # Create many results to test parallelism
-      results = for i <- 1..20 do
-        sample_result(%{
-          url: "https://example.com/page#{i}",
-          title: "Page #{i}"
-        })
-      end
+      results =
+        for i <- 1..20 do
+          sample_result(%{
+            url: "https://example.com/page#{i}",
+            title: "Page #{i}"
+          })
+        end
 
       {:ok, stats} = Markdown.export_individual(results, test_dir, parallel: true)
 
@@ -123,10 +124,11 @@ defmodule Mulberry.Export.MarkdownTest do
         :ets.insert(progress_calls, {index, total})
       end
 
-      {:ok, _stats} = Markdown.export_individual(results, test_dir,
-        parallel: false,
-        on_progress: on_progress
-      )
+      {:ok, _stats} =
+        Markdown.export_individual(results, test_dir,
+          parallel: false,
+          on_progress: on_progress
+        )
 
       # Should have called progress for each file
       assert :ets.info(progress_calls, :size) == 2
@@ -154,7 +156,8 @@ defmodule Mulberry.Export.MarkdownTest do
     test "respects combined_filename option", %{test_dir: test_dir} do
       results = [sample_result()]
 
-      {:ok, filepath} = Markdown.export_combined(results, test_dir, combined_filename: "all-pages")
+      {:ok, filepath} =
+        Markdown.export_combined(results, test_dir, combined_filename: "all-pages")
 
       assert String.ends_with?(filepath, "all-pages.md")
     end
@@ -195,10 +198,11 @@ defmodule Mulberry.Export.MarkdownTest do
     end
 
     test "escapes special YAML characters" do
-      result = sample_result(%{
-        url: "https://example.com/page?foo=bar",
-        title: "Title: With Colon"
-      })
+      result =
+        sample_result(%{
+          url: "https://example.com/page?foo=bar",
+          title: "Title: With Colon"
+        })
 
       frontmatter = Markdown.build_frontmatter(result)
 

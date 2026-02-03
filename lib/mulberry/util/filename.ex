@@ -35,7 +35,7 @@ defmodule Mulberry.Util.Filename do
   @dangerous_patterns [
     # Current and parent directory
     ".",
-    "..",
+    ".."
     # Hidden files (Unix)
     # Hyphen-prefixed (can be interpreted as command flags)
   ]
