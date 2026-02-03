@@ -594,6 +594,169 @@ by_employer = GoogleJobsResult.group_by_employer(result)
 # => %{"Tech Corp" => [job1, job2], "StartupCo" => [job3]}
 ```
 
+### GoogleEvents
+
+Fetch events from Google Events SERP results.
+
+**Module:** `DataForSEO.Tasks.GoogleEvents`
+
+**Type:** Async (polling required)
+
+**Parameters:**
+
+Required:
+- `:keyword` - Event search term (max 700 chars)
+
+Location (choose one, required):
+- `:location_name` - Full location name (e.g., "New York,New York,United States")
+- `:location_code` - Numeric location code (e.g., 2840 for USA)
+- `:location_coordinate` - "latitude,longitude,radius" format
+
+Optional:
+- `:language_code` - Language code (default: "en")
+- `:depth` - Results to fetch (default: 10)
+- `:date_range` - Date range for events
+- `:priority` - 1 (normal) or 2 (high priority, additional cost)
+- `:tag` - User identifier (max 255 chars)
+
+**Example:**
+
+```elixir
+{:ok, pid} = DataForSEO.Supervisor.start_task(
+  DataForSEO.Tasks.GoogleEvents,
+  %{
+    keyword: "concerts",
+    location_name: "New York,New York,United States",
+    language_code: "en",
+    depth: 50
+  },
+  callback: fn {:ok, result} ->
+    IO.puts("Keyword: #{result.metadata.keyword}")
+    IO.puts("Total events: #{GoogleEventsResult.event_count(result)}")
+
+    # Get events with tickets
+    ticketed = GoogleEventsResult.events_with_tickets(result)
+    IO.puts("Events with tickets: #{length(ticketed)}")
+
+    # Get unique ticket vendors
+    vendors = GoogleEventsResult.ticket_vendors(result)
+    IO.puts("Vendors: #{inspect(vendors)}")
+
+    # Process events
+    Enum.each(result.events, fn event ->
+      IO.puts("""
+      #{event.title}
+        Date: #{event.date}
+        Location: #{event.location && event.location.name}
+        Tickets: #{event.tickets_url || "N/A"}
+      """)
+    end)
+  end
+)
+```
+
+**With Date Range:**
+
+```elixir
+{:ok, pid} = DataForSEO.Supervisor.start_task(
+  DataForSEO.Tasks.GoogleEvents,
+  %{
+    keyword: "music festival",
+    location_code: 2840,
+    date_range: "next_week",
+    depth: 100
+  },
+  callback: &handle_events/1
+)
+```
+
+**Result Type:** `DataForSEO.Schemas.GoogleEventsResult`
+
+```elixir
+%GoogleEventsResult{
+  events: [GoogleEvent.t()],
+  metadata: %{
+    total_count: 50,
+    items_count: 50,
+    keyword: "concerts",
+    location: "New York,New York,United States",
+    language_code: "en",
+    check_url: "https://www.google.com/search?...",
+    datetime: "2025-01-27 12:00:00 +00:00"
+  }
+}
+
+# Each event:
+%GoogleEvent{
+  type: "event",
+  title: "Rock Concert 2025",
+  description: "Annual rock music festival...",
+  url: "https://...",
+  date: "Sat, Jan 25",
+  event_dates: %{
+    start_datetime: "2025-01-25T19:00:00",
+    end_datetime: "2025-01-25T23:00:00",
+    displayed_dates: "Sat, Jan 25"
+  },
+  location: %{
+    name: "Madison Square Garden",
+    address: "4 Pennsylvania Plaza, New York, NY",
+    url: "https://maps.google.com/...",
+    cid: "12345678901234567890",
+    feature_id: "..."
+  },
+  tickets_url: "https://...",
+  more_info_url: "https://...",
+  information_and_tickets: [
+    %{
+      type: "ticket",
+      title: "Buy Tickets",
+      description: "Tickets from $50",
+      url: "https://www.ticketmaster.com/...",
+      domain: "www.ticketmaster.com"
+    }
+  ],
+  image_url: "https://...",
+  position: 1,
+  xpath: "..."
+}
+```
+
+**GoogleEventsResult Helper Functions:**
+
+```elixir
+alias DataForSEO.Schemas.GoogleEventsResult
+
+# Get total event count
+GoogleEventsResult.event_count(result)  # => 50
+
+# Check if result has events
+GoogleEventsResult.has_events?(result)  # => true
+
+# Filter by date
+events_today = GoogleEventsResult.events_by_date(result, "Sat, Jan 25")
+
+# Get events with tickets available
+ticketed = GoogleEventsResult.events_with_tickets(result)
+
+# Filter by start datetime (ISO 8601 format)
+events = GoogleEventsResult.events_by_start_datetime(result, "2025-01-25T19:00:00")
+
+# Get events in a date range
+events = GoogleEventsResult.events_in_range(result, "2025-01-25T00:00:00", "2025-01-31T23:59:59")
+
+# Get all unique ticket vendors
+vendors = GoogleEventsResult.ticket_vendors(result)
+# => ["www.stubhub.com", "www.ticketmaster.com"]
+
+# Filter events by ticket vendor
+stubhub_events = GoogleEventsResult.events_by_vendor(result, "www.stubhub.com")
+
+# Get all ticket URLs for a specific event
+tickets = GoogleEventsResult.ticket_urls_for_event(event)
+# => [%{vendor: "Ticketmaster", url: "https://...", domain: "www.ticketmaster.com"}]
+```
+
 ### GoogleOrganic
 
 Fetch organic search results and People Also Ask questions from Google SERP.
@@ -1846,6 +2009,7 @@ System.get_env("DATAFORSEO_PASSWORD") # Should not be nil
 |--------|------|-------------|-----------|
 | `GoogleNews` | Async | Fetch news articles from Google News | 700 |
 | `GoogleJobs` | Async | Fetch job listings from Google Jobs | 200 |
+| `GoogleEvents` | Async | Fetch events from Google Events | - |
 | `GoogleOrganic` | Async | Fetch organic SERP results and People Also Ask | 700 |
 | `GoogleQuestions` | Async | Fetch Q&A from Google Business | 700 |
 | `GoogleReviews` | Async | Fetch Google Maps reviews | 4490 |
@@ -1864,6 +2028,17 @@ System.get_env("DATAFORSEO_PASSWORD") # Should not be nil
 - `job_count/1` - Get total number of jobs
 - `filter_by_contract_type/2` - Filter jobs by contract type
 - `group_by_employer/1` - Group jobs by employer name
+
+**GoogleEventsResult:**
+- `event_count/1` - Get total number of events
+- `has_events?/1` - Check if result has events
+- `events_by_date/2` - Filter events by displayed date
+- `events_with_tickets/1` - Get events with ticket URLs
+- `events_by_start_datetime/2` - Filter by start datetime
+- `events_in_range/3` - Get events in datetime range
+- `ticket_vendors/1` - Get unique ticket vendor domains
+- `events_by_vendor/2` - Filter events by ticket vendor
+- `ticket_urls_for_event/1` - Get ticket URLs for an event
 
 **GoogleOrganicResult:**
 - `organic_result_count/1` - Get total number of organic results

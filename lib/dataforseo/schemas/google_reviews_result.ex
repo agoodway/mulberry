@@ -104,9 +104,9 @@ defmodule DataForSEO.Schemas.GoogleReviewsResult do
   """
   @spec new(map()) :: t()
   def new(attrs) when is_map(attrs) do
+    # Use || to handle explicit nil values from API (Map.get default only works for missing keys)
     reviews =
-      attrs
-      |> Map.get("items", [])
+      (attrs["items"] || [])
       |> Enum.map(&GoogleReview.new/1)
 
     %__MODULE__{
